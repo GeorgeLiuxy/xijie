@@ -1,0 +1,96 @@
+.atlas-head { gap: 7px; }
+.atlas-head > :first-child { min-width: 0; }
+.atlas-head > :first-child > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.atlas-head > :last-child { flex: none; }
+.atlas-directory-trigger[data-search-new] { position: relative; }
+.atlas-directory-trigger[data-search-new]::after {
+  content: '';
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 2px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--color-paper);
+  border-radius: 50%;
+  background: var(--color-sun-deep);
+  pointer-events: none;
+}
+.atlas-clues-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding-inline: 10px; border-radius: 22px; color: var(--color-pearl); font-size: 14px; }
+.atlas-clues-trigger[aria-expanded=true] { color: var(--color-sun); }
+.atlas-directory-sheet {
+  --directory-muted: color-mix(in srgb, var(--color-pearl) 78%, var(--color-deep));
+  --directory-line: color-mix(in srgb, var(--color-pearl) 18%, transparent);
+  color: var(--color-pearl);
+}
+.atlas-directory-sheet .context-sheet__panel { height: min(740px, 88%); background: var(--color-deep); }
+.atlas-directory-sheet .context-sheet__body { display: flex; overflow: hidden; }
+.atlas-directory-sheet .context-sheet__grip span { background: color-mix(in srgb, var(--color-pearl) 35%, transparent); }
+.atlas-directory-sheet button:focus-visible, .atlas-clues-trigger:focus-visible { outline: 2px solid var(--color-sun); outline-offset: 2px; }
+.atlas-directory { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; color: var(--color-pearl); }
+.atlas-directory-head { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 20px 12px; }
+.atlas-directory-head h2 { min-width: 0; margin: 0; font: 500 26px/1.35 var(--font-serif); overflow-wrap: anywhere; }
+.atlas-clue-close, .atlas-clue-field button { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 50%; color: var(--color-pearl); }
+.atlas-clue-close svg, .atlas-clue-field button svg, .atlas-clue-seek svg { width: 18px; height: 18px; }
+.atlas-clue-close { background: color-mix(in srgb, var(--color-pearl) 8%, transparent); }
+.atlas-directory-search { flex: none; padding: 0 20px 16px; }
+.atlas-clue-field { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 0 10px 0 12px; border: 1px solid var(--directory-line); border-radius: 15px; background: color-mix(in srgb, var(--color-pearl) 5%, transparent); color: var(--directory-muted); }
+.atlas-clue-field > svg { flex: none; }
+.atlas-clue-field:focus-within { border-color: var(--color-sun); }
+.atlas-clue-field input { flex: 1; width: 100%; min-width: 0; min-height: 46px; padding: 10px 0; border: 0; outline: none; background: transparent; color: var(--color-pearl); caret-color: var(--color-sun); font-size: 16px; line-height: 1.5; }
+.atlas-clue-field input::placeholder { color: var(--directory-muted); opacity: 1; }
+.atlas-clue-field input::-webkit-search-cancel-button { display: none; }
+.atlas-directory-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 20px max(24px, var(--app-safe-bottom, 0px)); scrollbar-color: var(--directory-line) transparent; }
+.atlas-directory-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.atlas-directory-filters button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 9px 14px; border: 1px solid var(--directory-line); border-radius: 24px; color: var(--directory-muted); font-size: 14px; line-height: 1.5; }
+.atlas-directory-filters button[aria-pressed=true] { border-color: var(--color-sun); color: var(--color-sun); background: color-mix(in srgb, var(--color-sun) 8%, transparent); }
+.atlas-directory-filters button span { font: 12px/1.4 var(--font-mono); font-variant-numeric: tabular-nums; }
+.atlas-directory-count { margin: 0 0 18px; color: var(--directory-muted); font-size: 13px; line-height: 1.6; }
+.atlas-directory-group + .atlas-directory-group { margin-top: 28px; }
+.atlas-directory-group h3 { margin: 0 0 12px; color: var(--color-pearl); font: 500 19px/1.4 var(--font-serif); }
+.atlas-world-row, .atlas-clue-hit { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 72px; padding: 16px 0; border-top: 1px solid var(--directory-line); text-align: left; color: var(--color-pearl); }
+.atlas-world-thumb, .atlas-world-symbol { flex: none; width: 46px; height: 46px; border-radius: 50%; object-fit: cover; }
+.atlas-world-row[aria-current=location] .atlas-world-thumb, .atlas-world-row[aria-current=location] .atlas-world-symbol { outline: 1px solid var(--color-sun); outline-offset: 3px; }
+.atlas-world-symbol { display: grid; place-items: center; border: 1px dashed var(--directory-muted); color: var(--color-sun); }
+.atlas-world-symbol svg { width: 23px; height: 23px; }
+.atlas-world-copy, .atlas-clue-copy { display: flex; flex: 1; flex-direction: column; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.atlas-world-name { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px; }
+.atlas-world-name strong { font: 500 19px/1.4 var(--font-serif); }
+.atlas-world-name small { color: var(--directory-muted); font: 11px/1.5 var(--font-mono); }
+.atlas-world-law { color: var(--directory-muted); font-size: 14px; line-height: 1.6; }
+.atlas-world-meta { display: flex; flex-wrap: wrap; gap: 3px 12px; color: var(--directory-muted); font-size: 12px; line-height: 1.6; }
+.atlas-world-meta b { color: var(--color-sun); font-weight: 500; }
+.atlas-directory-chevron { flex: none; color: var(--directory-muted); }
+.atlas-directory-chevron svg { display: block; width: 16px; height: 16px; }
+.atlas-world-unknown { margin-top: 12px; }
+.atlas-clue-hit > :first-child { flex: none; }
+.atlas-clue-copy strong { font: 500 19px/1.4 var(--font-serif); }
+.atlas-clue-copy small { color: var(--directory-muted); font-size: 12px; line-height: 1.6; }
+.atlas-clue-copy > span { color: var(--directory-muted); font-size: 14px; line-height: 1.7; white-space: normal; }
+.atlas-clue-read-label { flex: none; max-width: 4.5rem; font-size: 12px; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+.atlas-clue-label { margin: 0 0 12px; color: var(--directory-muted); font-size: 14px; line-height: 1.7; }
+.atlas-clue-suggestions { display: flex; flex-wrap: wrap; gap: 8px; }
+.atlas-clue-suggestions button { max-width: 100%; min-height: 44px; padding: 10px 14px; border: 1px solid var(--directory-line); border-radius: 16px; color: var(--color-pearl); font-size: 14px; line-height: 1.6; text-align: left; overflow-wrap: anywhere; }
+.atlas-directory-action { min-height: 44px; padding: 10px 0; color: var(--color-sun); font-size: 14px; line-height: 1.7; text-align: left; text-decoration: underline; text-underline-offset: 4px; overflow-wrap: anywhere; }
+.atlas-clue-seek { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; margin-top: 12px; padding: 12px 16px; font-size: 14px; line-height: 1.5; }
+.atlas-clue-seek svg { flex: none; }
+.atlas-directory-empty { margin-top: 24px; }
+.atlas-directory-empty p { color: var(--directory-muted); font-size: 15px; line-height: 1.7; }
+.atlas-directory-pages { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.atlas-directory-pages button { min-width: 68px; min-height: 44px; padding: 10px; border: 1px solid var(--directory-line); border-radius: 12px; color: var(--color-pearl); font-size: 14px; }
+.atlas-directory-pages button:disabled { opacity: .4; cursor: default; }
+.atlas-directory-pages span { color: var(--directory-muted); font: 12px/1.5 var(--font-mono); font-variant-numeric: tabular-nums; }
+@media (hover: hover) {
+  .atlas-world-row:hover, .atlas-clue-hit:hover { background: color-mix(in srgb, var(--color-pearl) 4%, transparent); }
+  .atlas-clue-close:hover, .atlas-clue-suggestions button:hover, .atlas-directory-pages button:not(:disabled):hover { background: color-mix(in srgb, var(--color-pearl) 10%, transparent); }
+}
+@media (max-width: 350px) {
+  .atlas-directory-head { padding-inline: 16px; }
+  .atlas-directory-search, .atlas-directory-scroll { padding-inline: 16px; }
+  .atlas-world-row, .atlas-clue-hit { gap: 10px; }
+  .atlas-index { display: none; }
+}
+@media (max-height: 550px) {
+  .atlas-directory-head { padding-top: 2px; padding-bottom: 8px; }
+  .atlas-directory-head h2 { font-size: 23px; }
+  .atlas-directory-search { padding-bottom: 12px; }
+}

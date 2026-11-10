@@ -1,0 +1,15 @@
+{
+  "appId": "app.elysium.figma.dev",
+  "appName": "西界·Figma调试",
+  "webDir": "public",
+  "loggingBehavior": "none",
+  "android": {
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": true
+  },
+  "includePlugins": [],
+  "server": {
+    "url": "http://127.0.0.1:5174",
+    "errorPath": "usb-offline.html"
+  }
+}

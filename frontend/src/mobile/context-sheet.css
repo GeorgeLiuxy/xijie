@@ -1,0 +1,72 @@
+.context-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 110;
+  isolation: isolate;
+  color: var(--color-ink);
+}
+.context-sheet__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(10 23 25 / 35%);
+  animation: context-sheet-dim .2s ease-out both;
+  touch-action: none;
+}
+.context-sheet__panel {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  flex-direction: column;
+  height: min(680px, 76%);
+  max-height: calc(100% - var(--app-status-height, 44px) - 12px);
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 28px 28px 0 0;
+  background: var(--color-canvas);
+  box-shadow: 0 -12px 44px rgb(10 23 25 / 18%), inset 0 1px 0 var(--color-line);
+  animation: context-sheet-enter .28s cubic-bezier(.16, 1, .3, 1) both;
+}
+.context-sheet--expanded .context-sheet__panel {
+  height: calc(100% - var(--app-status-height, 44px) - 12px);
+}
+.context-sheet__grip {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  padding: 10px 0 6px;
+  pointer-events: none;
+}
+.context-sheet__grip span {
+  width: 34px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-ink-soft) 32%, transparent);
+}
+.context-sheet__body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.context-sheet__panel:focus-visible,
+.context-sheet :where(button, input, select, textarea, summary, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-sky-deep);
+  outline-offset: -3px;
+}
+.night .context-sheet__scrim { background: rgb(0 0 0 / 48%); }
+@keyframes context-sheet-enter {
+  from { transform: translateY(32px); }
+  to { transform: translateY(0); }
+}
+@keyframes context-sheet-dim {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.calm .context-sheet__panel,
+.calm .context-sheet__scrim { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .context-sheet__panel, .context-sheet__scrim { animation: none; }
+}

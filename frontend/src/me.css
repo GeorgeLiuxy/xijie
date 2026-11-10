@@ -1,0 +1,157 @@
+.me-page {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: var(--color-ink);
+  background: var(--color-canvas);
+}
+.me-scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: calc(var(--app-status-height) + 16px) 20px calc(100px + var(--app-safe-bottom));
+}
+.me-status-cover {
+  position: absolute;
+  inset: 0 0 auto;
+  height: var(--app-status-height);
+  z-index: 20;
+  background: var(--color-canvas);
+  pointer-events: none;
+}
+.me-page button:focus-visible { outline: 2px solid var(--color-sky-deep); outline-offset: -3px; }
+.me-account { display: flex; align-items: center; gap: 12px; margin-bottom: 19px; }
+.me-initial {
+  display: grid;
+  flex: none;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-sun-deep) 48%, var(--color-line));
+  border-radius: 50%;
+  background: var(--color-paper);
+  font: 500 24px/1 var(--font-serif);
+}
+.me-identity { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.me-identity p { font-size: 12px; color: var(--color-ink-soft); }
+.me-identity h1 { font: 500 25px/1.2 var(--font-serif); }
+.me-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: 9px;
+  color: var(--color-sky-deep);
+  font-size: 14px;
+}
+.me-edit svg { width: 14px; height: 14px; flex: none; }
+.me-assets, .me-setting-list {
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: 18px;
+  background: var(--color-paper);
+}
+.me-wallet {
+  display: grid;
+  width: 100%;
+  gap: 11px;
+  padding: 12px 15px;
+  text-align: start;
+  background: color-mix(in srgb, var(--color-sky-tint) 70%, var(--color-paper));
+}
+.me-wallet-title, .me-invite-link { display: flex; align-items: center; gap: 9px; }
+.me-wallet-title > span, .me-invite-link > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.me-wallet-title svg, .me-invite-link svg, .me-setting-icon svg { width: 18px; height: 18px; flex: none; color: var(--color-sky-deep); }
+.me-wallet-title svg:last-child, .me-invite-link svg:last-child, .me-setting-chevron { width: 14px; height: 14px; flex: none; color: var(--color-ink-soft); }
+.me-wallet-title { font-size: 15px; font-weight: 600; }
+.me-balances { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.me-balances > span { display: grid; gap: 2px; min-width: 0; }
+.me-balances > span + span { border-inline-start: 1px solid var(--color-line); padding-inline-start: 14px; }
+.me-balances > span > span { color: var(--color-ink-soft); font-size: 12px; overflow-wrap: anywhere; }
+.me-balances b { font: 500 25px/1.1 var(--font-serif); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.me-invite-link {
+  width: 100%;
+  min-height: 46px;
+  padding: 7px 15px;
+  border-top: 1px solid var(--color-line);
+  text-align: start;
+  color: var(--color-ink-soft);
+  font-size: 13px;
+}
+.me-settings { margin-top: 21px; }
+.me-settings > h2, .me-preferences h3 {
+  margin: 0 0 6px;
+  padding-inline: 2px;
+  color: var(--color-ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+.me-setting-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  gap: 9px;
+  padding: 8px 13px;
+  text-align: start;
+  font-size: 14px;
+}
+.me-setting-row + .me-setting-row { border-top: 1px solid var(--color-line); }
+.me-setting-icon { flex: none; }
+.me-setting-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.me-setting-value { max-width: 42%; color: var(--color-ink-soft); font-size: 13px; text-align: end; overflow-wrap: anywhere; }
+.me-wallet:active, .me-invite-link:active, .me-setting-row:active { background: var(--color-sky-tint); }
+.me-settings-sheet .context-sheet__panel { height: auto; padding-bottom: var(--app-safe-bottom); }
+.me-panel-heading {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px 6px 20px;
+  background: var(--color-canvas);
+}
+.me-panel-heading h2 { font: 500 22px/1.35 var(--font-serif); overflow-wrap: anywhere; }
+.me-panel-heading button {
+  display: grid;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-ink-soft);
+}
+.me-panel-heading button svg { width: 18px; height: 18px; }
+.me-panel-content { flex: none; padding: 4px 20px 20px; }
+.me-account-form, .me-field { display: grid; gap: 9px; }
+.me-field { min-width: 0; font-size: 14px; }
+.me-field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 13px;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  color: var(--color-ink);
+  background: var(--color-paper);
+  font-size: 16px;
+}
+.me-primary, .me-secondary { min-height: 44px; border-radius: 22px; padding: 8px 15px; font-size: 14px; font-weight: 600; }
+.me-account-actions { margin-top: 16px; border-top: 1px solid var(--color-line); }
+.me-account-actions .me-setting-row { padding-inline: 4px; }
+.me-confirm { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.me-secondary { border: 1px solid var(--color-line); }
+.me-theme-options { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--color-line); border-radius: 15px; background: var(--color-paper); }
+.me-theme-options button { flex: 1; min-width: 0; min-height: 44px; padding: 5px 4px; border-radius: 11px; font-size: 14px; overflow-wrap: anywhere; }
+.me-theme-options button[aria-pressed='true'] { background: var(--color-sky-tint); box-shadow: inset 0 0 0 1px var(--color-sky-deep); }
+.me-preferences { display: grid; gap: 13px; }
+.me-preferences section > div { border: 1px solid var(--color-line); border-radius: 14px; background: var(--color-paper); }
+.me-preferences [role='switch'] + [role='switch'] { border-top: 1px solid var(--color-line); }
+.me-reading { color: var(--color-ink-soft); font-size: 14px; line-height: 1.65; }
+.me-reading h3 { color: var(--color-ink); font-weight: 600; }
+.me-reading p { margin: 3px 0 12px; }

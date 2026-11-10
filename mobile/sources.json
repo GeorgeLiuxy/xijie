@@ -1,0 +1,9 @@
+{
+  "capacitorVersion": "8.5.2",
+  "templateSha256": "5edb50a67a034556da8bb5fa54eb08211eaa952aac0949c75050ebcf0be97303",
+  "runtimeSource": "@capacitor/android@8.5.2",
+  "runtimeModifications": [
+    "capacitor/build.gradle: AGP 8.13.0 -> 8.13.2 to match validated local cache"
+  ],
+  "runtimeLicense": "vendor/capacitor-android/LICENSE"
+}

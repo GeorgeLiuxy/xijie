@@ -1,0 +1,22 @@
+.gathering .chat-system-note {
+  width: fit-content;
+  padding: .5rem .75rem;
+  border-radius: .75rem;
+  border: 1px solid var(--color-line);
+  background: var(--color-canvas);
+  color: var(--color-ink-soft);
+  text-wrap: balance;
+}
+
+.gathering .chat-message-bubble[data-direction] {
+  border: 1px solid var(--color-line);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.gathering .chat-message-bubble[data-direction="outgoing"] { background: var(--color-sky-tint); }
+.gathering .chat-message-bubble[data-selected="true"] { outline: 2px solid var(--color-sun-deep); outline-offset: 2px; }
+.gathering .chat-message-time { color: var(--color-ink-soft); }

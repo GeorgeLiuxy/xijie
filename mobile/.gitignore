@@ -1,0 +1,6 @@
+.android-user-home/
+.tmp/
+artifacts/
+android/.gradle/
+android/local.properties
+**/build/

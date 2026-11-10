@@ -1,0 +1,127 @@
+/* Bounded fallbacks for the native WebView 103 core flows. Modern CSS stays authoritative. */
+@supports not (color: color-mix(in srgb, red, white)) {
+  .app-device-frame { --legacy-ink-rgb: 41, 69, 66; --legacy-sky-rgb: 94, 154, 150; }
+  .app-device-frame.night { --legacy-ink-rgb: 238, 241, 236; --legacy-sky-rgb: 143, 192, 187; }
+
+  /* Keep ordinary controls on theme-aware surfaces, including after a theme switch. */
+  .app-device-frame :is(.bg-paper\/70, .bg-paper\/80, .bg-paper\/85) { background-color: var(--color-paper); }
+  .app-device-frame .bg-canvas\/95 { background-color: var(--color-canvas); }
+  .app-device-frame .bg-sun-tint\/70 { background-color: var(--color-sun-tint); }
+  .app-device-frame .bg-ink\/15 { background-color: rgba(var(--legacy-ink-rgb), .15); }
+  .app-device-frame .bg-ink\/25 { background-color: rgba(var(--legacy-ink-rgb), .25); }
+  .app-device-frame .bg-ink\/30 { background-color: rgba(var(--legacy-ink-rgb), .30); }
+  .app-device-frame .bg-ink\/50 { background-color: rgba(var(--legacy-ink-rgb), .50); }
+  .app-device-frame .bg-sky\/10 { background-color: rgba(var(--legacy-sky-rgb), .10); }
+  .app-device-frame .bg-sky\/12 { background-color: rgba(var(--legacy-sky-rgb), .12); }
+  .app-device-frame .bg-sky\/15 { background-color: rgba(var(--legacy-sky-rgb), .15); }
+  .app-device-frame .bg-sun\/20 { background-color: rgba(235, 201, 149, .20); }
+  .app-device-frame .bg-black\/45 { background-color: rgba(0, 0, 0, .45); }
+  .app-device-frame .bg-black\/55 { background-color: rgba(0, 0, 0, .55); }
+  .app-device-frame .bg-black\/\[0\.03\] { background-color: rgba(0, 0, 0, .03); }
+  .app-device-frame :is(.bg-black\/\[0\.04\], .bg-black\/\[0\.035\]) { background-color: rgba(0, 0, 0, .04); }
+  .app-device-frame .bg-black\/\[0\.05\] { background-color: rgba(0, 0, 0, .05); }
+  .app-device-frame .bg-white\/10 { background-color: rgba(255, 255, 255, .10); }
+  .app-device-frame .bg-white\/15 { background-color: rgba(255, 255, 255, .15); }
+  .app-device-frame .bg-white\/20 { background-color: rgba(255, 255, 255, .20); }
+  .app-device-frame .bg-white\/\[0\.07\] { background-color: rgba(255, 255, 255, .07); }
+  .app-device-frame :is(.text-ink-soft\/80, .text-ink\/55, .text-ink\/70, .text-ink\/80) { color: var(--color-ink-soft); }
+  .app-device-frame .text-pearl\/40 { color: rgba(247, 245, 239, .40); }
+  .app-device-frame .text-pearl\/45 { color: rgba(247, 245, 239, .45); }
+  .app-device-frame .text-pearl\/50 { color: rgba(247, 245, 239, .50); }
+  .app-device-frame .text-pearl\/55 { color: rgba(247, 245, 239, .55); }
+  .app-device-frame .text-pearl\/60 { color: rgba(247, 245, 239, .60); }
+  .app-device-frame .text-pearl\/65 { color: rgba(247, 245, 239, .65); }
+  .app-device-frame .text-pearl\/68 { color: rgba(247, 245, 239, .68); }
+  .app-device-frame .text-pearl\/70 { color: rgba(247, 245, 239, .70); }
+  .app-device-frame .text-pearl\/72 { color: rgba(247, 245, 239, .72); }
+  .app-device-frame .text-pearl\/75 { color: rgba(247, 245, 239, .75); }
+  .app-device-frame .text-pearl\/78 { color: rgba(247, 245, 239, .78); }
+  .app-device-frame .text-pearl\/80 { color: rgba(247, 245, 239, .80); }
+  .app-device-frame .text-pearl\/82 { color: rgba(247, 245, 239, .82); }
+  .app-device-frame .text-pearl\/85 { color: rgba(247, 245, 239, .85); }
+  .app-device-frame .text-pearl\/88 { color: rgba(247, 245, 239, .88); }
+  .app-device-frame .text-pearl\/90 { color: rgba(247, 245, 239, .90); }
+  .app-device-frame .text-pearl\/92 { color: rgba(247, 245, 239, .92); }
+  .app-device-frame .placeholder\:text-pearl\/35::placeholder { color: rgba(247, 245, 239, .55); }
+  .app-device-frame :is(.ring-white\/10, .ring-white\/15, .ring-white\/20, .ring-white\/25, .ring-white\/30) { --tw-ring-color: rgba(255, 255, 255, .25); }
+  .app-device-frame :is(.ring-sky\/40, .focus\:ring-sky\/40:focus, .focus\:ring-sky\/50:focus, .focus-within\:ring-sky\/60:focus-within) { --tw-ring-color: var(--color-sky); }
+  .app-device-frame :is(.ring-sun\/40, .ring-sun\/50, .ring-sun\/60, .ring-sun\/70, .focus\:ring-sun\/60:focus) { --tw-ring-color: var(--color-sun); }
+  .app-device-frame .ring-pearl\/40 { --tw-ring-color: rgba(247, 245, 239, .40); }
+  .app-device-frame :is(.ring-black\/5, .ring-black\/10) { --tw-ring-color: rgba(0, 0, 0, .10); }
+  .app-device-frame :is(.border-white\/10, .border-white\/12, .border-white\/20, .border-white\/25) { border-color: rgba(255, 255, 255, .20); }
+  .app-device-frame .border-line\/70 { border-color: var(--color-line); }
+  .app-device-frame :is(.border-sky\/60, .border-lake\/60) { border-color: var(--color-sky); }
+  .app-device-frame .border-sun\/60 { border-color: rgba(235, 201, 149, .60); }
+  .app-device-frame .border-coral\/70 { border-color: rgba(217, 138, 116, .70); }
+  .app-device-frame .bg-gradient-to-b { background-image: linear-gradient(to bottom, var(--tw-gradient-from, transparent), var(--tw-gradient-to, transparent)); }
+  .app-device-frame .from-black\/35 { --tw-gradient-from: rgba(0, 0, 0, .35); }
+  .app-device-frame .from-black\/40 { --tw-gradient-from: rgba(0, 0, 0, .40); }
+  .app-device-frame .from-black\/45 { --tw-gradient-from: rgba(0, 0, 0, .45); }
+  .app-device-frame .from-transparent { --tw-gradient-from: transparent; }
+  .app-device-frame .to-black\/40 { --tw-gradient-to: rgba(0, 0, 0, .40); }
+  .app-device-frame .to-canvas { --tw-gradient-to: var(--color-canvas); }
+  .app-device-frame .to-transparent { --tw-gradient-to: transparent; }
+  .app-device-frame .btn-dark:disabled { background-color: var(--color-cloud); color: var(--color-ink-soft); }
+  .app-device-frame :is(.active\:bg-black\/5, .active\:bg-black\/\[0\.03\], .active\:bg-black\/\[0\.04\]):active { background-color: rgba(0, 0, 0, .05); }
+  .app-device-frame .active\:bg-cloud\/50:active { background-color: var(--color-cloud); }
+  .app-device-frame .active\:bg-sky\/10:active { background-color: var(--color-sky-tint); }
+  .app-device-frame :is(.active\:bg-white\/5, .active\:bg-white\/10):active { background-color: rgba(255, 255, 255, .10); }
+
+  .app-device-frame .meet-wash { background: linear-gradient(115deg, var(--color-sun-tint), var(--color-canvas) 82%); }
+  .app-device-frame :is(.meet-invite, .meet-activity) { background: var(--color-sky-tint); border-color: var(--color-line); }
+  .app-device-frame :is(.meet-search, .meet-circle) { border-color: var(--color-line); }
+  .app-device-frame .meet-row:active { background: var(--color-sky-tint); }
+  .app-device-frame .person-space { --chat-surface: var(--wb); --chat-outgoing: var(--color-sky-tint); }
+  .app-device-frame .person-space.wb-courtyard { --chat-outgoing: #e3e5d8; }
+  .app-device-frame .person-space.wb-tide { --chat-outgoing: #d2e5e3; }
+  .app-device-frame .person-space.wb-isles { --chat-outgoing: #dee3eb; }
+  .app-device-frame.night .person-space.wb-courtyard { --chat-outgoing: #4c594e; }
+  .app-device-frame.night .person-space.wb-tide { --chat-outgoing: #3b5959; }
+  .app-device-frame.night .person-space.wb-isles { --chat-outgoing: #475761; }
+  .app-device-frame .chat-topbar { background: var(--color-paper); box-shadow: none; }
+  .app-device-frame .atlas-world-card { background: var(--atlas-sky, #172f32); }
+  .app-device-frame .atlas-directory-sheet { --directory-muted: #d2dcd6; --directory-line: rgba(247, 245, 239, .18); }
+  .app-device-frame .atlas-directory-sheet .context-sheet__grip span { background: rgba(247, 245, 239, .35); }
+  .app-device-frame .context-sheet__grip span { background: var(--color-ink-soft); }
+  .app-device-frame .atlas-clue-close { background: rgba(247, 245, 239, .08); }
+  .app-device-frame .atlas-clue-field { background: rgba(247, 245, 239, .05); }
+  .app-device-frame .atlas-directory-filters button[aria-pressed=true] { background: rgba(235, 201, 149, .08); }
+
+  /* The picker can still distinguish a selection and open readable invite forms. */
+  .app-device-frame :is(.gs-tint-pet, .gs-tint-collection) { --gift-surface: var(--color-sun-tint); }
+  .app-device-frame :is(.gs-tint-home, .gs-tint-scenery, .gs-tint-journey) { --gift-surface: var(--color-sky-tint); }
+  .app-device-frame .gs-tint-experience { --gift-surface: var(--color-paper); }
+  .app-device-frame .gs-item { background: var(--gift-surface, var(--color-paper)); }
+  .app-device-frame .gift-studio.gs-compact .gs-item { background: transparent; }
+  .app-device-frame .gift-studio .gs-item[aria-pressed=true] { background: var(--gift-surface, var(--color-sky-tint)); box-shadow: inset 0 0 0 1px var(--color-sun-deep); }
+  .app-device-frame :is(.gs-credit, .gs-postage, .gg-recipe, .gg-postage) { background: var(--color-sun-tint); border-color: var(--color-line); }
+  .app-device-frame :is(.gift-studio .gs-search, .gs-goal-album, .gift-profile-shelf, .gift-space-corner, .asset-notice-detail, .gg-hero > span, .gg-memory-cells > span) { background: var(--color-paper); }
+  .app-device-frame :is(.gs-goal-card, .gs-goal-home, .gs-goal-open, .gs-confirm-controls, .gg-fuel > i, .gg-parts > div[data-done=true], .gg-memory-cells > span[data-done=true], .asset-balances > div + div) { border-color: var(--color-line); }
+  .app-device-frame .gs-goal-card > small { color: var(--color-ink-soft); }
+  .app-device-frame .gs-sources button[aria-pressed=true] { border-color: var(--color-sky); }
+  .app-device-frame .gs-bottom-nav button[aria-current] { background: var(--color-sky-tint); }
+  .app-device-frame .gs-delivery-seal { background: var(--gift-surface, var(--color-paper)); }
+  .app-device-frame :is(.gs-search input, .gg-label input, .gg-label textarea)::placeholder { color: var(--color-ink-soft); opacity: 1; }
+}
+
+@supports not (translate: 1px) {
+  /* Only utility-bearing elements participate; inline orbit/scene transforms win untouched. */
+  .app-device-frame :where(.-translate-x-1\/2, .-translate-y-1\/2, .-translate-y-3, .-translate-y-10, .-translate-y-\[80\%\], .scale-105, .scale-110, .scale-\[0\.42\], .rotate-45, .rotate-90, .active\:scale-90, .active\:scale-95, .active\:scale-\[0\.98\], .active\:scale-\[0\.99\]):where(:not([style*="transform"])) {
+    --tw-translate-x: 0px; --tw-translate-y: 0px; --legacy-scale: 1; --legacy-rotate: 0deg;
+    transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--legacy-rotate)) scale(var(--legacy-scale));
+  }
+  .app-device-frame .-translate-x-1\/2 { --tw-translate-x: -50%; }
+  .app-device-frame .-translate-y-1\/2 { --tw-translate-y: -50%; }
+  .app-device-frame .-translate-y-3 { --tw-translate-y: -.75rem; }
+  .app-device-frame .-translate-y-10 { --tw-translate-y: -2.5rem; }
+  .app-device-frame .-translate-y-\[80\%\] { --tw-translate-y: -80%; }
+  .app-device-frame .scale-105 { --legacy-scale: 1.05; }
+  .app-device-frame .scale-110 { --legacy-scale: 1.10; }
+  .app-device-frame .scale-\[0\.42\] { --legacy-scale: .42; }
+  .app-device-frame .rotate-45 { --legacy-rotate: 45deg; }
+  .app-device-frame .rotate-90 { --legacy-rotate: 90deg; }
+  .app-device-frame .active\:scale-90:active { --legacy-scale: .90; }
+  .app-device-frame .active\:scale-95:active { --legacy-scale: .95; }
+  .app-device-frame .active\:scale-\[0\.98\]:active { --legacy-scale: .98; }
+  .app-device-frame .active\:scale-\[0\.99\]:active { --legacy-scale: .99; }
+}

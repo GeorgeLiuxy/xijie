@@ -1,0 +1,10 @@
+# Keep Unix tool entry points compatible across checkouts.
+/.figma/make/* text eol=lf
+/mobile/android/gradlew text eol=lf
+
+# Source media and Gradle Wrapper are checked in as binaries.
+*.jpg binary
+*.mp4 binary
+*.png binary
+*.webp binary
+*.jar binary

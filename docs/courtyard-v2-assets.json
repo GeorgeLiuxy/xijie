@@ -1,0 +1,39 @@
+{
+  "title": "西界 · 雨后旧院 v2",
+  "created": "2026-11-09",
+  "scope": "独立视觉交互原型；未替换主应用 WorldView，记忆与 AI 回应均为示例，未接入用户数据或聊天服务。",
+  "entry": "frontend/public/experience/courtyard-v2.html",
+  "assets": [
+    {
+      "path": "frontend/public/experience/courtyard-v2.jpg",
+      "source": "built-in image_gen",
+      "encoding": "原构图转 JPEG，quality 88"
+    },
+    {
+      "path": "frontend/public/experience/courtyard-v2.mp4",
+      "source": "HeyGen image_to_video",
+      "model": "heygen-video-1",
+      "videoId": "013215d92c664fd59f6216625fbd69dd",
+      "referenceAssetId": "4738e088166f4ae09fc236c20568a4d1",
+      "measuredDurationSeconds": 8.083344,
+      "measuredWidth": 768,
+      "measuredHeight": 1344,
+      "bytes": 3780688
+    }
+  ],
+  "imagePrompt": "Use case: photorealistic-natural. Create a portrait 9:16 background photograph for an intimate Chinese memory app, no interface or lettering. A believable modest family courtyard in southern China after a brief late-summer rain, viewed at seated human eye level from a shaded wooden doorway. In the lower-middle foreground, a small worn dark wooden tea table with two plain cream enamel cups and a well-used metal kettle; beside it an empty bamboo chair with a simple cotton cloth draped over the back. Beyond the table: wet gray stone paving, a low old plaster and brick wall, an open kitchen doorway with softly warm daylight, a few ordinary potted plants. A leafy branch frames the upper corner. Quiet signs of everyday life, nothing staged like a hotel. The empty chair and second cup suggest a shared moment without showing any person. Beautiful but understated documentary film still, natural lens perspective, tactile worn materials, true soft green leaves, warm gray stone, a little amber light, gentle contrast and visible shadow detail. Calm late-afternoon daylight after rain, nostalgic without sepia or melodrama. Frame has depth and breathing room; cup and chair must be clear enough to be interactive objects in the lower-middle area; reserve a quiet darker area near the upper left for tiny app text. No floating islands, fantasy portals, grand architecture, glossy CGI, excessive bloom, particles, signage, text, people, faces, UI, borders or watermark.",
+  "videoPrompt": "Create an eight-second quiet environmental living scene from this exact first-frame photograph. The camera is locked absolutely still at the doorway: no zoom, pan, dolly, cuts, reframing, focus rack or exposure change. Preserve every cup, table, chair, door, wall and plant in exactly the same position and shape. Only three subtle natural motions: upper-right green leaves sway gently in a light breeze; one or two small residual raindrops fall naturally from the eaves into the wet courtyard; a very faint slender thread of steam rises above the kettle. Keep movement small and physically believable, continuous, unhurried. All furniture and cups remain absolutely stationary. Same natural after-rain afternoon light, ordinary lived-in Chinese courtyard, intimate documentary realism. Compose a smooth loop returning to the same resting scene at the end. Audio: very quiet natural leaf rustle, occasional soft water drops, distant courtyard ambience; no speech, no music, no dramatic effects. No people, faces, human shadows, animals, new objects, subtitles, lettering, logos, particle sparkle, surreal motion or stylized CGI.",
+  "verification": [
+    "node --check passed",
+    "浏览器确认视频加载与播放，duration 8.083344",
+    "用户点击后音频可播放，暂停画面不暂停音频",
+    "进入茶桌、打开记忆、展开回应、返回院子通过",
+    "320 x 640 窄屏无横向溢出，活动按钮位于视口内",
+    "浏览器无 error 日志"
+  ],
+  "boundaries": [
+    "这是生成视频，不是实拍素材",
+    "未进行逐帧、专业混音或全设备性能验收",
+    "真实 AI、保存服务和现有三世界数据没有在本原型中接入"
+  ]
+}

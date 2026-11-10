@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="1138" viewBox="0 0 1480 1138" role="img" aria-labelledby="architecture-title architecture-desc">
+<title id="architecture-title">西界后端总体架构</title>
+<desc id="architecture-desc">目标架构。现有 App、Web 和运营入口经 HTTPS 接入同一个 NestJS API。API 与 Worker 复用 PostgreSQL、私有对象存储和 pg-boss 任务，使用 Logto OSS 身份服务，按市场接入身份提供方、支付、AI 和推送。LiveKit 实时通话按需启用。首期主栈为 TypeScript 和 SQL，Android 原生层为 Java 21。</desc>
+<defs>
+ <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1L9 5L1 9" fill="none" stroke="#566c69" stroke-width="1.45"/></marker>
+ <marker id="arrow-back" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M9 1L1 5L9 9" fill="none" stroke="#566c69" stroke-width="1.45"/></marker>
+</defs>
+<style>
+ text{font-family:"Microsoft YaHei UI","Microsoft YaHei","Noto Sans CJK SC",sans-serif;fill:#1e3231}
+ .paper{fill:#f5f5ef}.heading{font-size:39px;font-weight:700;letter-spacing:-.5px}
+ .eyebrow{font-size:16px;font-weight:700;letter-spacing:1.7px;fill:#486660}
+ .subtitle{font-size:19px;fill:#4c605c}
+ .label{font-size:21px;font-weight:700}.module-label{font-size:20px;font-weight:700}
+ .detail{font-size:16.5px;fill:#4a5e59}.small{font-size:15px;fill:#4e635e}.edge-label{font-size:15px;fill:#49615d}
+ .node{fill:#fffefa;stroke:#ccd7d0;stroke-width:1.35}.gateway{fill:#ddece5;stroke:#a8beb4;stroke-width:1.5}
+ .app-boundary{fill:#edf2ec;stroke:#b8cac1;stroke-width:1.45}.module{fill:#fbfcf8;stroke:#c9d7cf;stroke-width:1.25}
+ .integration{fill:#f7f1e5;stroke:#d8cbb2;stroke-width:1.25}.later{fill:#f6f2e8;stroke:#b6a688;stroke-width:1.3;stroke-dasharray:6 5}
+ .ops{fill:#e9eee7;stroke:#c7d3ca;stroke-width:1.25}
+ .flow,.async{fill:none;stroke:#627875;stroke-width:1.65;stroke-linejoin:round;stroke-linecap:round}
+ .async{stroke-dasharray:6 5}.divider{stroke:#c2d0c7;stroke-width:1.2}
+</style>
+<rect x="0" y="0" width="1480" height="1138" rx="0" class="paper"/>
+<text x="42" y="42" class="eyebrow">西界 ELYSIUM   /   目标架构</text>
+<text x="42" y="85" class="heading">西界后端总体架构</text>
+<text x="42" y="116" class="subtitle">先打通私人空间核心闭环，再按发行渠道接入支付和实时媒体</text>
+<path d="M1140 66H1173" class="flow" marker-end="url(#arrow)"/>
+<text x="1182" y="72" class="small">同步请求</text>
+<path d="M1284 66H1317" class="async" marker-end="url(#arrow)"/>
+<text x="1326" y="72" class="small">异步与渠道</text>
+<text x="42" y="150" class="eyebrow">01   用户端与入口</text>
+<g role="group" aria-label="西界 App，TypeScript · React / Capacitor"><rect x="42" y="165" width="321" height="75" rx="12" class="node"/><text x="58" y="193" class="label">西界 App</text><text x="58" y="218" class="detail">TypeScript · React / Capacitor</text></g>
+<g role="group" aria-label="Web 与公开分享，TypeScript · 主应用与公开分享"><rect x="389" y="165" width="321" height="75" rx="12" class="node"/><text x="405" y="193" class="label">Web 与公开分享</text><text x="405" y="218" class="detail">TypeScript · 主应用与公开分享</text></g>
+<g role="group" aria-label="运营与客服，TypeScript · 审核、查单及申诉"><rect x="736" y="165" width="321" height="75" rx="12" class="node"/><text x="752" y="193" class="label">运营与客服</text><text x="752" y="218" class="detail">TypeScript · 审核、查单及申诉</text></g>
+<path d="M202 241V262" class="flow" marker-end="url(#arrow)"/>
+<path d="M549 241V262" class="flow" marker-end="url(#arrow)"/>
+<path d="M896 241V262" class="flow" marker-end="url(#arrow)"/>
+<g role="group" aria-label="HTTPS 入口　Caddy 或云入口，公开链接、业务 API、身份服务和渠道回调分别路由与鉴权"><rect x="42" y="264" width="1015" height="71" rx="12" class="gateway"/><text x="58" y="292" class="label">HTTPS 入口　Caddy 或云入口</text><text x="58" y="317" class="detail">公开链接、业务 API、身份服务和渠道回调分别路由与鉴权</text></g>
+<path d="M549 336V361" class="flow" marker-end="url(#arrow)"/>
+<rect x="42" y="362" width="1015" height="274" rx="15" class="app-boundary"/>
+<text x="59" y="392" class="eyebrow">02   西界业务 API</text>
+<text x="294" y="392" class="subtitle">TypeScript / Node.js · NestJS 单体 · REST / OpenAPI / SSE</text>
+<g role="group" aria-label="账号与权限，会话 · 账号归属 · 同意与注销"><rect x="60" y="411" width="235" height="85" rx="12" class="module"/><text x="76" y="439" class="module-label">账号与权限</text><text x="76" y="464" class="detail">会话 · 账号归属 · 同意与注销</text></g>
+<g role="group" aria-label="人物与回忆，寻找 TA · 世界 · 回忆检索"><rect x="308" y="411" width="235" height="85" rx="12" class="module"/><text x="324" y="439" class="module-label">人物与回忆</text><text x="324" y="464" class="detail">寻找 TA · 世界 · 回忆检索</text></g>
+<g role="group" aria-label="会话与生成，私聊 · 小聚 · 书信 · AI 任务"><rect x="556" y="411" width="235" height="85" rx="12" class="module"/><text x="572" y="439" class="module-label">会话与生成</text><text x="572" y="464" class="detail">私聊 · 小聚 · 书信 · AI 任务</text></g>
+<g role="group" aria-label="媒体与动态，素材授权 · 上传 · 发布与互动"><rect x="804" y="411" width="235" height="85" rx="12" class="module"/><text x="820" y="439" class="module-label">媒体与动态</text><text x="820" y="464" class="detail">素材授权 · 上传 · 发布与互动</text></g>
+<g role="group" aria-label="商品与订单，渠道报价 · 验单 · 退款及对账"><rect x="60" y="507" width="235" height="85" rx="12" class="module"/><text x="76" y="535" class="module-label">商品与订单</text><text x="76" y="560" class="detail">渠道报价 · 验单 · 退款及对账</text></g>
+<g role="group" aria-label="礼物与资产，余额流水 · 扣减 · 投递与回礼"><rect x="308" y="507" width="235" height="85" rx="12" class="module"/><text x="324" y="535" class="module-label">礼物与资产</text><text x="324" y="560" class="detail">余额流水 · 扣减 · 投递与回礼</text></g>
+<g role="group" aria-label="邀请与共创，首条回忆奖励 · 公开共创"><rect x="556" y="507" width="235" height="85" rx="12" class="module"/><text x="572" y="535" class="module-label">邀请与共创</text><text x="572" y="560" class="detail">首条回忆奖励 · 公开共创</text></g>
+<g role="group" aria-label="通知与运营，站内消息 · 申诉 · 风险处置"><rect x="804" y="507" width="235" height="85" rx="12" class="module"/><text x="820" y="535" class="module-label">通知与运营</text><text x="820" y="560" class="detail">站内消息 · 申诉 · 风险处置</text></g>
+<text x="60" y="619" class="edge-label">用户确认记忆 → 邀请资格 → 发券　　　渠道验单 → 待发放 → 权益入账</text>
+<text x="42" y="670" class="eyebrow">03   开源底座与任务</text>
+<path d="M251 637V688" class="flow" marker-end="url(#arrow)"/>
+<path d="M676 637V688" class="flow" marker-end="url(#arrow)"/>
+<path d="M932 637V688" class="flow" marker-start="url(#arrow-back)" marker-end="url(#arrow)"/>
+<g role="group" aria-label="PostgreSQL，SQL · 人物、消息与账本，任务表 · 身份服务独立库"><rect x="42" y="690" width="233" height="121" rx="12" class="node"/><text x="58" y="718" class="label">PostgreSQL</text><text x="58" y="743" class="detail">SQL · 人物、消息与账本</text>
+<text x="58" y="766" class="detail">任务表 · 身份服务独立库</text></g>
+<g role="group" aria-label="Worker + pg-boss，TypeScript / Node.js，生成、回信、媒体与补单"><rect x="302" y="690" width="233" height="121" rx="12" class="node"/><text x="318" y="718" class="label">Worker + pg-boss</text><text x="318" y="743" class="detail">TypeScript / Node.js</text>
+<text x="318" y="766" class="detail">生成、回信、媒体与补单</text></g>
+<g role="group" aria-label="私有对象存储，S3 兼容接口 · 限时签名，托管服务或 SeaweedFS"><rect x="563" y="690" width="233" height="121" rx="12" class="node"/><text x="579" y="718" class="label">私有对象存储</text><text x="579" y="743" class="detail">S3 兼容接口 · 限时签名</text>
+<text x="579" y="766" class="detail">托管服务或 SeaweedFS</text></g>
+<g role="group" aria-label="Logto OSS，TS / Node.js · OIDC，原生回跳需真机验证"><rect x="823" y="690" width="234" height="121" rx="12" class="node"/><text x="839" y="718" class="label">Logto OSS</text><text x="839" y="743" class="detail">TS / Node.js · OIDC</text>
+<text x="839" y="766" class="detail">原生回跳需真机验证</text></g>
+<path d="M276 751H301" class="async" marker-start="url(#arrow-back)" marker-end="url(#arrow)"/>
+<path d="M536 751H562" class="async" marker-end="url(#arrow)"/>
+<path d="M940 812V839H158V812" class="flow" marker-end="url(#arrow)"/>
+<text x="682" y="862" class="small">身份库与业务库隔离，可共用 PostgreSQL 实例</text>
+<text x="1134" y="150" class="eyebrow">04   外部服务与发行渠道</text>
+<g role="group" aria-label="短信与第三方身份，首发一家短信商，微信 · Apple · Google 按需启用"><rect x="1134" y="165" width="306" height="96" rx="12" class="integration"/><text x="1150" y="193" class="label">短信与第三方身份</text><text x="1150" y="218" class="detail">首发一家短信商</text>
+<text x="1150" y="241" class="detail">微信 · Apple · Google 按需启用</text></g>
+<g role="group" aria-label="官方支付通道，Node.js · 支付宝 / Apple / Stripe，Play Billing · 官方服务端 API，微信直连候选 · Go 官方 SDK"><rect x="1134" y="290" width="306" height="121" rx="12" class="integration"/><text x="1150" y="318" class="label">官方支付通道</text><text x="1150" y="343" class="detail">Node.js · 支付宝 / Apple / Stripe</text>
+<text x="1150" y="366" class="detail">Play Billing · 官方服务端 API</text>
+<text x="1150" y="389" class="detail">微信直连候选 · Go 官方 SDK</text></g>
+<g role="group" aria-label="模型与系统推送，TypeScript · AI SDK 接模型，APNs / FCM / 国内渠道按需"><rect x="1134" y="443" width="306" height="109" rx="12" class="integration"/><text x="1150" y="471" class="label">模型与系统推送</text><text x="1150" y="496" class="detail">TypeScript · AI SDK 接模型</text>
+<text x="1150" y="519" class="detail">APNs / FCM / 国内渠道按需</text></g>
+<g role="group" aria-label="LiveKit + Agents，Go 媒体服务 · TypeScript Agent，原生端直连媒体，API 签发令牌"><rect x="1134" y="585" width="306" height="115" rx="12" class="later"/><text x="1150" y="613" class="label">LiveKit + Agents</text><text x="1150" y="638" class="detail">Go 媒体服务 · TypeScript Agent</text>
+<text x="1150" y="661" class="detail">原生端直连媒体，API 签发令牌</text></g>
+<path d="M1058 731H1080V214H1133" class="async" marker-end="url(#arrow)"/>
+<path d="M1058 533H1095V357H1133" class="async" marker-end="url(#arrow)"/>
+<path d="M1133 319H1110V284H1058" class="async" marker-end="url(#arrow)"/>
+<path d="M530 813V821H1115V496H1133" class="async" marker-end="url(#arrow)"/>
+<path d="M1058 590H1067V643H1133" class="async" marker-end="url(#arrow)"/>
+<text x="1134" y="751" class="eyebrow">交付顺序</text>
+<text x="1134" y="782" class="detail">01  登录、人物、对话与原文</text>
+<text x="1134" y="806" class="detail">02  赠礼、邀约与首个真实支付</text>
+<text x="1134" y="830" class="detail">03  按需接实时语音和其他渠道</text>
+<rect x="42" y="887" width="1398" height="71" rx="12" class="ops"/>
+<text x="61" y="917" class="label">贯穿各层</text>
+<text x="187" y="916" class="subtitle">账号隔离 · 年龄与用途授权 · AI 标识和停止互动 · 回调验签 · 审计、告警与备份恢复</text>
+<text x="187" y="942" class="small">私人内容经权限校验读取。订单和奖励由后端事务入账。正式能力以首发地区与发行渠道验收为准。</text>
+<rect x="42" y="980" width="1398" height="130" rx="12" class="app-boundary"/>
+<text x="61" y="1007" class="eyebrow">05   开发语言与维护范围</text>
+<path d="M382 1022V1090M728 1022V1090M1065 1022V1090" class="divider"/>
+<text x="61" y="1038" class="small">西界首期主栈</text>
+<text x="61" y="1064" class="module-label">TypeScript / TSX + SQL</text>
+<text x="61" y="1089" class="detail">前端、API、Worker、数据迁移</text>
+<text x="402" y="1038" class="small">客户端原生桥接</text>
+<text x="402" y="1064" class="module-label">Android Java 21 · iOS Swift</text>
+<text x="402" y="1089" class="detail">Android 已有，鸿蒙等按端适配</text>
+<text x="747" y="1038" class="small">按需编写的适配</text>
+<text x="747" y="1064" class="module-label">微信直连 Go · Agent 首选 TS</text>
+<text x="747" y="1089" class="detail">语音插件有需要时再加入 Python</text>
+<text x="1085" y="1038" class="small">部署现成开源服务</text>
+<text x="1085" y="1064" class="module-label">Logto 使用 TypeScript / Node.js</text>
+<text x="1085" y="1089" class="detail">LiveKit Server、Caddy、SeaweedFS 用 Go</text>
+</svg>

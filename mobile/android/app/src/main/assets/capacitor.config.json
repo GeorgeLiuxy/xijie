@@ -1,0 +1,11 @@
+{
+  "appId": "app.elysium.figma.dev",
+  "appName": "西界·Figma调试",
+  "webDir": "public",
+  "loggingBehavior": "none",
+  "android": {
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  },
+  "includePlugins": []
+}

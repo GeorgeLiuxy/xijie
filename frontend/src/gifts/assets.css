@@ -1,0 +1,52 @@
+.asset-page {
+  position: absolute;
+  inset: 0;
+  z-index: 105;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+.asset-page button:focus-visible { outline: 2px solid var(--color-sky-deep); outline-offset: -2px; }
+.asset-header { display: flex; align-items: center; gap: 12px; flex: none; padding: 46px 18px 14px 14px; }
+.asset-header h1 { min-width: 0; font: 500 26px/1.4 var(--font-serif); letter-spacing: .04em; overflow-wrap: anywhere; }
+.asset-header button { display: grid; flex: none; place-items: center; width: 44px; height: 44px; border-radius: 50%; }
+.asset-header button svg { width: 22px; height: 22px; }
+.asset-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 21px 40px; }
+.asset-balances { display: grid; grid-template-columns: 1fr 1fr; padding: 21px 17px; border: 1px solid var(--color-line); border-radius: 18px; background: var(--color-sky-tint); }
+.asset-balances > div + div { padding-inline-start: 20px; border-inline-start: 1px solid color-mix(in srgb, var(--color-sky) 36%, transparent); }
+.asset-balances dt { color: var(--color-ink-soft); font-size: 13px; }
+.asset-balances dd { margin-top: 7px; font: 500 36px/1.15 var(--font-serif); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.asset-balances dd small { margin-left: 5px; color: var(--color-ink-soft); font: 12px var(--font-sans); }
+.asset-help, .asset-empty { color: var(--color-ink-soft); font-size: 13px; line-height: 1.7; }
+.asset-help { margin: 12px 2px 22px; }
+.asset-tabs { display: flex; gap: 23px; border-bottom: 1px solid var(--color-line); }
+.asset-tabs button { position: relative; min-height: 44px; color: var(--color-ink-soft); font-size: 14px; }
+.asset-tabs button[aria-pressed=true] { color: var(--color-ink); font-weight: 600; }
+.asset-tabs button[aria-pressed=true]::after { content: ''; position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: var(--color-sun-deep); }
+.asset-row, .asset-notice-toggle { display: flex; align-items: center; gap: 12px; min-height: 65px; padding: 12px 0; }
+.asset-row { border-bottom: 1px solid var(--color-line); }
+.asset-row-copy { flex: 1; min-width: 0; }
+.asset-row-copy b { display: block; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
+.asset-row-copy small { display: block; margin-block: 2px; color: var(--color-ink-soft); font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; }
+.asset-glyph { display: grid; flex: none; place-items: center; width: 38px; height: 38px; border-radius: 12px; color: var(--color-sky-deep); background: var(--color-sky-tint); }
+.asset-glyph svg, .asset-glyph img { width: 23px; height: 23px; object-fit: contain; }
+.asset-quantity { flex: none; font-size: 13px; color: var(--color-ink-soft); font-variant-numeric: tabular-nums; }
+.asset-empty { padding: 26px 1px; }
+.asset-notice { border-bottom: 1px solid var(--color-line); }
+.asset-notice-toggle { width: 100%; text-align: start; }
+.asset-ticket { color: var(--color-sun-deep); background: var(--color-sun-tint); }
+.asset-grant { flex: none; color: var(--color-sky-deep); font-variant-numeric: tabular-nums; font-size: 14px; }
+.asset-disclose { width: 15px; height: 15px; flex: none; color: var(--color-ink-soft); }
+.asset-notice-toggle[aria-expanded=true] .asset-disclose { transform: rotate(180deg); }
+.asset-notice-detail { margin: 0 0 15px; padding: 14px 15px 4px; border-radius: 12px; background: color-mix(in srgb, var(--color-paper) 80%, transparent); color: var(--color-ink-soft); font-size: 13px; line-height: 1.7; }
+.asset-notice-detail p + p { margin-top: 8px; }
+.asset-notice-balance { display: flex; align-items: center; justify-content: space-between; gap: 7px; margin-top: 8px; border-top: 1px solid var(--color-line); color: var(--color-ink); }
+.asset-notice-balance button { min-height: 44px; color: var(--color-sky-deep); }
+.asset-inbox-empty { display: grid; justify-items: center; gap: 12px; padding-top: 20vh; }
+@media (max-height: 590px) { .asset-header { padding-top: 42px; padding-bottom: 8px; } }
+
+.asset-order-actions { display: flex; flex-wrap: wrap; gap: 0 19px; margin: -10px 0 9px; }
+.asset-order-actions button { min-height: 44px; padding: 0 2px; color: var(--color-sky-deep); font-size: 14px; font-weight: 600; }
+.asset-order-actions button:hover { text-decoration: underline; }

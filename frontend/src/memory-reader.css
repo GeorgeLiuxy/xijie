@@ -1,0 +1,36 @@
+.memory-reader-sheet .context-sheet__panel { height: auto; padding-bottom: var(--app-safe-bottom); }
+.memory-reader-heading {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px 6px 20px;
+  background: var(--color-canvas);
+}
+.memory-reader-heading h2 { font: 500 20px/1.35 var(--font-serif); }
+.memory-reader-heading button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-ink-soft);
+}
+.memory-reader-heading svg { width: 17px; height: 17px; }
+.memory-reader-content {
+  flex: none;
+  margin: 1px 20px 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-line);
+  border-radius: 15px;
+  background: var(--color-paper);
+  overflow-wrap: anywhere;
+}
+.memory-reader-content > p:first-child { color: var(--color-ink-soft); font-size: 12px; }
+.memory-reader-content h3 { margin-top: 4px; font: 500 22px/1.35 var(--font-serif); }
+.memory-reader-original { margin-top: 9px; font: 400 16px/1.8 var(--font-serif); white-space: pre-wrap; }

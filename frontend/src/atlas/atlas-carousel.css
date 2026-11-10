@@ -1,0 +1,72 @@
+.atlas-carousel { position: relative; display: flex; flex: 1; min-height: 190px; flex-direction: column; }
+.atlas-stage { position: relative; flex: 1; min-height: 140px; perspective: 1100px; touch-action: pan-y; user-select: none; }
+.atlas-orbits { position: absolute; left: 50%; top: 47%; transform-style: preserve-3d; }
+.atlas-planet { position: absolute; left: 0; top: 0; width: 204px; height: 204px; will-change: transform; }
+.atlas-planet-target { position: absolute; inset: 0; z-index: 2; border-radius: 50%; touch-action: pan-y; -webkit-tap-highlight-color: transparent; }
+.atlas-planet-target:focus-visible { outline: 2px solid var(--color-sun); outline-offset: 8px; }
+.atlas-planet-resident { z-index: 3; min-width: 44px; min-height: 44px; }
+.atlas-swipe-hint { position: absolute; inset: auto 10px 6px; pointer-events: none; text-align: center; color: #e2e6dc; font-size: 11px; letter-spacing: .1em; }
+.atlas-tuner { display: flex; align-items: center; gap: 10px; flex: none; height: 56px; padding: 0 20px; }
+.atlas-step { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 50%; color: var(--color-pearl); touch-action: manipulation; }
+.atlas-step svg { width: 18px; height: 18px; }
+.atlas-step:disabled { opacity: .25; }
+.atlas-step:not(:disabled):active { background: #f7f5ef24; }
+.atlas-step:focus-visible, .atlas-directory-trigger:focus-visible { outline: 2px solid var(--color-sun); outline-offset: 3px; }
+.atlas-tuner-window { position: relative; flex: 1; height: 50px; overflow: hidden; touch-action: pan-y; user-select: none; mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); }
+.atlas-tuner-track { position: absolute; left: 50%; top: 0; height: 100%; }
+.atlas-tick { position: absolute; top: 6px; width: 1px; height: 7px; background: #f7f5ef38; }
+.atlas-tick--major { height: 14px; background: var(--atlas-accent, var(--color-sun)); }
+.atlas-tick-label { position: absolute; top: 26px; transform: translateX(-50%); color: #c6d3ce; font: 10px/1.3 var(--font-mono); letter-spacing: .16em; white-space: nowrap; }
+.atlas-tick-label--active { color: var(--atlas-accent, var(--color-sun)); }
+.atlas-tuner-needle { position: absolute; top: 0; left: 50%; width: 1px; height: 22px; background: var(--atlas-accent, var(--color-sun)); }
+.atlas-tuner-needle::before { content: ''; position: absolute; left: -3.5px; top: 0; border-inline: 4px solid transparent; border-top: 5px solid var(--atlas-accent, var(--color-sun)); }
+.atlas-carousel[data-dragging=true] .fx { animation-play-state: paused; }
+.atlas-root:has(.atlas-carousel[data-dragging=true]) > .atlas-field .fx { animation-play-state: paused; }
+.atlas-root { container: atlas / size; background: linear-gradient(180deg, var(--atlas-sky) 0%, var(--atlas-horizon) 43%, var(--color-abyss) 100%); }
+.atlas-ambient { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .12; filter: blur(28px) saturate(.9); transform: scale(1.15); pointer-events: none; }
+.atlas-sky-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgb(9 23 27 / 14%), transparent 30%, rgb(9 23 27 / 12%) 60%, rgb(9 23 27 / 72%) 100%); }
+.atlas-world-card { display: grid; grid-template-rows: 16px 36px 40px 44px 48px; gap: 8px; padding: 16px 20px; background: color-mix(in srgb, var(--atlas-sky) 28%, #12292b); box-shadow: inset 0 1px 0 rgb(247 245 239 / 12%); }
+.atlas-world-card > :first-child { grid-row: 1; min-width: 0; gap: 8px; white-space: nowrap; overflow: hidden; }
+.atlas-card-meta > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.atlas-world-card > h2 { grid-row: 2; min-width: 0; margin: 0; line-height: 36px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.atlas-world-card > p { grid-row: 3; min-width: 0; margin: 0; line-height: 20px; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.atlas-world-card > .atlas-residents { grid-row: 4; min-width: 0; min-height: 0; height: 44px; margin: 0; overflow: hidden; }
+.atlas-world-actions { grid-row: 5; display: flex; gap: 10px; min-width: 0; height: 48px; margin: 0; }
+.atlas-world-actions > button { flex: 1; min-width: 0; margin-top: 0; padding-inline: 6px; gap: 5px; letter-spacing: .02em; }
+.atlas-world-actions > button > svg { width: 16px; height: 16px; flex: none; }
+.atlas-world-card .font-mono { letter-spacing: .14em; }
+.atlas-world-card .btn-light { box-shadow: none; }
+.atlas-directory-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding-inline: 14px; border-radius: 24px; color: var(--color-pearl); font-size: 14px; }
+.atlas-directory-trigger svg { width: 18px; height: 18px; }
+.atlas-world-count { margin-top: 9px; color: #d2dcd6; font-size: 12px; letter-spacing: .04em; }
+.atlas-world-info { flex: none; padding: 4px 16px 100px; }
+.atlas-world-info > div { animation: none; }
+.atlas-resident-link { display: grid; place-items: center; min-width: 44px; min-height: 44px; }
+.atlas-resident-link:focus-visible { outline: 2px solid var(--color-sun); outline-offset: -2px; }
+@media (max-height: 620px) {
+  .atlas-world-info { padding-bottom: 88px; }
+  .atlas-world-card { grid-template-rows: 16px 30px 36px 0 44px; gap: 6px; padding: 12px 16px; }
+  .atlas-world-card > h2 { font-size: 23px; line-height: 30px; }
+  .atlas-world-card > p { line-height: 18px; }
+  .atlas-world-actions, .atlas-world-actions > button { height: 44px; }
+  .atlas-world-info .atlas-residents { display: none; }
+  .atlas-stage { min-height: 100px; }
+  .atlas-carousel { min-height: 156px; }
+  .atlas-swipe-hint { display: none; }
+}
+/* Large text scales the app frame, so viewport height alone misses compact layouts. */
+@container atlas (max-height: 620px) {
+  .atlas-world-info { padding-bottom: calc(var(--app-safe-bottom) + 88px); }
+  .atlas-world-card { grid-template-rows: 16px 30px 36px 0 44px; gap: 6px; padding: 12px 16px; }
+  .atlas-world-card > h2 { font-size: 23px; line-height: 30px; }
+  .atlas-world-card > p { line-height: 18px; }
+  .atlas-world-actions, .atlas-world-actions > button { height: 44px; }
+  .atlas-world-info .atlas-residents { display: none; }
+  .atlas-stage { min-height: 100px; }
+  .atlas-carousel { min-height: 156px; }
+  .atlas-swipe-hint { display: none; }
+}
+.calm .atlas-planet, .calm .atlas-tuner-track { transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .atlas-planet, .atlas-tuner-track { transition: none !important; }
+}

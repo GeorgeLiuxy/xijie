@@ -1,0 +1,20 @@
+.cinema { display:flex; flex-direction:column; }
+.cinema-view { position:relative; flex:1; min-height:0; background:#111a22; isolation:isolate; overflow:hidden; pointer-events:auto; }
+.cinema-canvas { display:block; width:100%; height:100%; position:absolute; inset:0; touch-action:none; cursor:grab; }
+.cinema-canvas:active { cursor:grabbing; }
+.cinema-hud { position:absolute; inset:18px 15px auto; display:flex; justify-content:space-between; align-items:center; gap:8px; color:#e5d7bc; font:9px/1.3 var(--font-mono); letter-spacing:.08em; pointer-events:none; text-shadow:0 1px 5px #000; }
+.cinema-hud b { font-weight:400; color:#d1d6d2; font-size:8px; }
+.cinema-hint { position:absolute; bottom:14px; right:14px; font:10px var(--font-sans); color:#e0e0d4b8; pointer-events:none; text-shadow:0 1px 3px #000; }
+.cinema-panel { min-height:164px; border-top:1px solid #b4b29b3b; background:linear-gradient(135deg,#263338,#111d24); }
+.cinema-panel h2 { margin:5px 0 7px; font-size:26px; font-weight:500; }
+.cinema-panel p { min-height:35px; font-size:13px; line-height:1.5; }
+.cinema-progress { margin:9px 0 10px; height:1px; overflow:hidden; background:#788b8e44; }
+.cinema-progress i { display:block; width:100%; height:1px; transform-origin:left; background:#d0b98e; }
+.cinema-load { position:absolute; inset:0; display:grid; align-content:center; justify-items:center; padding:25px; text-align:center; background:radial-gradient(at 35% 40%,#34434c,#101b22); color:#ded5c1; }
+.cinema-load small { font:10px var(--font-mono); letter-spacing:.3em; opacity:.7; }
+.cinema-load p { font:14px/1.6 var(--font-sans); margin:13px 0; }
+.cinema-load button { padding:8px 20px; border:1px solid #a8b0a555; border-radius:4px; }
+.cinema .cinema-hold { touch-action:none; user-select:none; }
+.cinema-hold[aria-pressed=true] { background:#ac9b76; color:#111b1f; }
+.pp-launch .cinema-hud,.pp-launch .cinema-hint { visibility:hidden; }
+@media(max-height:600px){.cinema-panel{min-height:142px}.cinema-panel h2{font-size:23px}.cinema-panel p{font-size:12px;min-height:30px}.cinema-hud{font-size:8px}}

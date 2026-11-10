@@ -1,0 +1,91 @@
+.atlas-root {
+  --atlas-accent: var(--atlas-night-accent);
+  --atlas-card-muted: rgba(247, 245, 239, .6);
+  --atlas-card-copy: rgba(247, 245, 239, .75);
+  --atlas-card-resident: rgba(247, 245, 239, .85);
+  color: var(--color-pearl);
+}
+
+.atlas-card-meta { color: var(--atlas-card-muted); }
+.atlas-world-card > p { color: var(--atlas-card-copy); }
+.atlas-resident-names { color: var(--atlas-card-resident); }
+
+/* The world's tint sits inside the same paper-and-ink palette as Home. */
+.atlas-root[data-tone="day"] {
+  --atlas-day-horizon: #dfe9e8;
+  --atlas-accent: #355f5d;
+  --atlas-card-muted: #475d5a;
+  --atlas-card-copy: var(--atlas-card-muted);
+  --atlas-card-resident: var(--color-ink);
+  color: var(--color-ink);
+  background: linear-gradient(180deg, var(--color-canvas), var(--atlas-day-horizon) 43%, var(--color-canvas) 94%);
+}
+.atlas-root[data-tone="day"][data-world="courtyard"] {
+  --atlas-day-horizon: #eee2cb;
+  --atlas-accent: #6e5329;
+}
+.atlas-root[data-tone="day"][data-world="tide"] {
+  --atlas-day-horizon: #d8e9ed;
+  --atlas-accent: #315a66;
+}
+.atlas-root[data-tone="day"][data-world="isles"] {
+  --atlas-day-horizon: #e7dfef;
+  --atlas-accent: #5c4875;
+}
+.atlas-root[data-tone="day"] .atlas-ambient { opacity: .08; }
+.atlas-root[data-tone="day"] .atlas-sky-shade { background: none; }
+.atlas-root[data-tone="day"] .atlas-world-card {
+  background: var(--color-paper);
+  box-shadow: inset 0 0 0 1px var(--color-line);
+}
+.atlas-root[data-tone="day"] :is(.atlas-world-count, .atlas-swipe-hint, .atlas-tick-label) {
+  color: var(--atlas-card-muted);
+}
+.atlas-root[data-tone="day"] .atlas-tick { background: rgba(41, 69, 66, .24); }
+.atlas-root[data-tone="day"] .atlas-tick--major { background: var(--atlas-accent); }
+.atlas-root[data-tone="day"] .atlas-tick-label--active { color: var(--atlas-accent); }
+.atlas-root[data-tone="day"] :is(.atlas-step, .atlas-directory-trigger, .atlas-world-actions .glass-dim) {
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  box-shadow: inset 0 0 0 1px rgba(41, 69, 66, .25);
+}
+.atlas-root[data-tone="day"] :is(.atlas-step, .atlas-directory-trigger, .atlas-world-actions .glass-dim):not(:disabled):active {
+  background: var(--color-sky-tint);
+}
+.atlas-root[data-tone="day"] .btn-light {
+  color: var(--color-canvas);
+  background: var(--color-ink);
+}
+.atlas-root[data-tone="day"] :is(.atlas-step, .atlas-directory-trigger, .atlas-planet-target, .atlas-resident-link, .atlas-directory-sheet button):focus-visible {
+  outline-color: var(--color-sky-deep);
+}
+
+/* Keep the directory readable on the older native WebView as well. */
+.atlas-root[data-tone="day"] .atlas-directory-sheet {
+  --directory-muted: var(--atlas-card-muted);
+  --directory-line: var(--color-line);
+  color: var(--color-ink);
+}
+.atlas-root[data-tone="day"] .atlas-directory-sheet .context-sheet__panel { background: var(--color-canvas); }
+.atlas-root[data-tone="day"] .atlas-directory-sheet .context-sheet__grip span { background: #a9b6af; }
+.atlas-root[data-tone="day"] :is(.atlas-directory, .atlas-directory-group h3, .atlas-world-row, .atlas-clue-hit,
+  .atlas-clue-close, .atlas-clue-field input, .atlas-clue-field button, .atlas-clue-suggestions button, .atlas-directory-pages button) {
+  color: var(--color-ink);
+}
+.atlas-root[data-tone="day"] .atlas-clue-close { background: var(--color-cloud); }
+.atlas-root[data-tone="day"] .atlas-clue-field { background: var(--color-paper); }
+.atlas-root[data-tone="day"] .atlas-clue-field:focus-within { border-color: var(--color-sky-deep); }
+.atlas-root[data-tone="day"] .atlas-clue-field input { caret-color: var(--color-sky-deep); }
+.atlas-root[data-tone="day"] .atlas-directory-filters button[aria-pressed="true"] {
+  color: var(--color-ink);
+  border-color: var(--color-sky-deep);
+  background: var(--color-sky-tint);
+}
+.atlas-root[data-tone="day"] :is(.atlas-directory-action, .atlas-world-symbol, .atlas-world-meta b) { color: var(--atlas-accent); }
+.atlas-root[data-tone="day"] .atlas-world-row[aria-current="location"] :is(.atlas-world-thumb, .atlas-world-symbol) {
+  outline-color: var(--atlas-accent);
+}
+@media (hover: hover) {
+  .atlas-root[data-tone="day"] :is(.atlas-world-row, .atlas-clue-hit, .atlas-clue-close, .atlas-clue-suggestions button,
+    .atlas-directory-pages button:not(:disabled)):hover { background: var(--color-cloud); }
+}

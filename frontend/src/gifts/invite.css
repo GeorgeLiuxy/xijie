@@ -1,0 +1,72 @@
+.gi-content {
+  padding: 24px 22px max(32px, env(safe-area-inset-bottom));
+  background: radial-gradient(ellipse at 95% 0%, var(--color-sun-tint), transparent 32%), var(--color-canvas);
+}
+.gi-content h1 { margin: 0 0 12px; font: 28px/1.4 var(--font-serif); color: var(--color-ink); text-wrap: balance; }
+.gi-content h2 { font: 21px/1.5 var(--font-serif); margin: 0 0 10px; }
+.gi-content > p, .gi-record-content > p, .gi-share > p { font-size: 14px; line-height: 1.75; color: var(--color-ink-soft); }
+.gi-content .gi-benefit { margin: 0; }
+.gi-benefit strong { display: block; font-size: 16px; font-weight: 600; color: var(--color-ink); }
+.gi-benefit > span { display: block; margin-top: 5px; font-size: 14px; }
+.gi-content .gi-conditions-title { margin: 22px 0 0; font: 500 15px/1.6 var(--font-sans); color: var(--color-ink); }
+.gi-rules { margin: 14px 0 20px; padding: 0; list-style: none; }
+.gi-rules li, .gi-preview, .gi-entry { display: flex; align-items: center; gap: 12px; }
+.gi-rules li + li { margin-top: 10px; }
+.gi-rules li > span, .gi-seal { display: grid; place-items: center; border-radius: 50%; background: var(--color-sun-tint); color: var(--color-sun-deep); }
+.gi-rules li > span { width: 30px; height: 30px; flex: 0 0 30px; font: 15px var(--font-serif); }
+.gi-rules p { min-width: 0; margin: 0; font-size: 14px; line-height: 1.65; color: var(--color-ink-soft); }
+.gi-share { border-block: 1px solid var(--color-line); padding: 0 0 22px; }
+.gi-share .gg-label { margin-block: 12px; }
+.gi-preview { padding-block: 14px; }
+.gi-preview > div, .gi-entry > span { min-width: 0; flex: 1; }
+.gi-preview > svg, .gi-entry > svg { width: 23px; height: 23px; flex: 0 0 23px; color: var(--color-sky-deep); }
+.gi-preview b, .gi-entry b { display: block; line-height: 1.5; font-size: 15px; overflow-wrap: anywhere; }
+.gi-preview small, .gi-entry small { display: block; margin-top: 4px; font-size: 13px; color: var(--color-ink-soft); line-height: 1.6; }
+.gi-records { margin: 16px 0; }
+.gi-records > summary { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; list-style: none; color: var(--color-ink); font: 20px/1.4 var(--font-serif); }
+.gi-records > summary::-webkit-details-marker { display: none; }
+.gi-records > summary > span:first-child { flex: 1; min-width: 0; }
+.gi-record-count { font: 14px/1.5 var(--font-sans); color: var(--color-ink-soft); }
+.gi-records > summary > svg { width: 18px; height: 18px; flex: none; color: var(--color-ink-soft); transition: transform .18s; }
+.gi-records[open] > summary > svg { transform: rotate(90deg); }
+.gi-record-content { padding-top: 6px; }
+.gi-entry { padding: 12px 0; border-bottom: 1px solid var(--color-line); }
+.gi-records .gg-secondary, .gi-page .gg-error button { margin-top: 12px; }
+.gi-public { padding-top: max(75px, 12vh); }
+.native-app .gi-public { padding-top: max(calc(var(--app-status-height, 0px) + 24px), 12vh); }
+.native-app .gi-content { padding-bottom: max(32px, var(--app-safe-bottom, 0px)); }
+.gi-seal { width: 58px; height: 58px; margin-bottom: 22px; }
+.gi-seal svg { width: 29px; height: 29px; }
+.gi-public h1 { margin-top: 18px; }
+.gi-link { display: block; padding: 13px; margin-top: 18px; text-align: center; text-decoration: none; }
+.gi-page .gg-header > span, .gi-content { min-width: 0; overflow-wrap: anywhere; }
+.gi-share .gg-primary, .gi-records .gg-secondary { white-space: normal; }
+.gi-page :is(button, input, summary):focus-visible { outline: 2px solid var(--color-sky-deep); outline-offset: 2px; }
+.gi-sheet-layout {
+  --gg-panel: var(--color-paper);
+  --action: linear-gradient(135deg, #375e55, #263f3a);
+  --on-action: #fff9eb;
+  --action-edge: #78969066;
+  --action-shadow: #193d3880;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--color-ink);
+  background: var(--color-canvas);
+}
+.gi-sheet-layout .gg-header, .native-app .gi-sheet-layout .gg-header { min-height: 56px; padding: 2px 18px 10px 10px; }
+.gi-sheet-layout .gi-content { padding-top: 16px; }
+.gi-sheet-layout .gi-content h1 { margin-bottom: 8px; font-size: 25px; line-height: 1.35; }
+.gi-sheet-layout .gi-conditions-title { margin-top: 16px; }
+.gi-sheet-layout .gi-rules { margin-block: 10px 16px; }
+.gi-sheet-layout button:disabled { cursor: default; opacity: .52; }
+.calm .gi-records > summary > svg { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .gi-records > summary > svg { transition: none; }
+}
+@media (max-width: 355px) {
+  .gi-content { padding-inline: 18px; }
+  .gi-content h1 { font-size: 26px; }
+}

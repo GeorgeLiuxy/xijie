@@ -1,0 +1,6 @@
+// Empty plugin configuration, equivalent to Capacitor 8.5.2's generated output.
+ext {
+    cdvMinSdkVersion = project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 24
+    cdvPluginPostBuildExtras = []
+    cordovaConfig = [:]
+}

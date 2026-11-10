@@ -1,0 +1,59 @@
+.rw-home {
+  display: flex;
+  align-items: center;
+}
+
+.rw-home:focus-visible {
+  outline: 3px solid #e9cc89;
+  outline-offset: 2px;
+}
+
+.rw-home small {
+  font: 500 11px/1.45 var(--font-mono);
+  letter-spacing: .10em;
+}
+
+.rw-home {
+  margin: 5px 20px 10px;
+  padding: 13px 16px;
+  justify-content: space-between;
+  isolation: isolate;
+  overflow: hidden;
+  position: relative;
+  color: #f7eddb;
+  text-decoration: none;
+  border-radius: 14px;
+  background: #162027;
+  background-image: linear-gradient(95deg,#18242b 5%,#172228c2 54%,transparent),url(../post/assets/lens.webp);
+  background-size: cover,60% auto;
+  background-position: center,100% 46%;
+  background-repeat: no-repeat;
+}
+
+.rw-home span>* {
+  display: block;
+}
+
+.rw-home small {
+  font-size: 9px;
+  color: #d7bc8b;
+}
+
+.rw-home b {
+  font: 600 19px var(--font-serif);
+  margin: 2px 0;
+}
+
+.rw-home em {
+  font-size: 12px;
+  font-style: normal;
+  color: #dde1da;
+}
+
+.rw-home i {
+  font-size: 21px;
+  font-style: normal;
+}
+
+.home-launch .rw-home { align-self: stretch; }
+.rw-home-ticket { display: block; margin: 0 20px 10px; padding: 8px; text-align: right; font-size: 13px; color: var(--color-ink); }

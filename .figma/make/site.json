@@ -1,0 +1,10 @@
+{
+  "description": "Provides adults a private digital space to interact with AI personas through voice or text, revisit shared memories, and explore AI-crafted stories.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

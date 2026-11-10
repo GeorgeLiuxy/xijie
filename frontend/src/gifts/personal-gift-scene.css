@@ -1,0 +1,58 @@
+.pgs-scene {
+  position:absolute; inset:0; isolation:isolate; z-index:2; pointer-events:none;
+  container-type:inline-size;
+  --pgs-grade:saturate(.84) sepia(.07);
+}
+.pgs-tide { --pgs-grade:saturate(.75) hue-rotate(3deg); }
+.pgs-isles { --pgs-grade:saturate(.71) hue-rotate(-6deg); }
+.pgs-foreground { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.pgs-foreground path { vector-effect:non-scaling-stroke; }
+.pgs-prop {
+  position:absolute; left:var(--pgs-x); top:var(--pgs-y); display:grid; justify-items:center; align-items:end; width:max(44px,var(--pgs-width)); height:52px;
+  padding:0; border:none; background:transparent; border-radius:11px; transform:translate(-50%,-100%);
+  cursor:pointer; pointer-events:auto; touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+}
+.pgs-prop:focus-visible,.pgs-receipt:focus-visible,.pgs-dismiss:focus-visible { outline:2px solid #fff0c6; outline-offset:3px; }
+.pgs-object {
+  position:relative; display:block; width:var(--pgs-width); transform-origin:50% 97%;
+  filter:var(--pgs-grade) drop-shadow(1px 1.4px 1.2px #27352765);
+  transition:filter .22s,transform .22s;
+}
+.pgs-object svg,.pgs-object img { display:block; width:100%; height:auto; object-fit:contain; user-select:none; }
+.pgs-ball .pgs-object { width:calc(var(--pgs-width)*.79); }
+.pgs-courtyard .pgs-cloth .pgs-object { transform:rotate(3deg); }
+.pgs-courtyard .pgs-zone-seat { left:22px; top:calc(50% + 4.8cqw); }
+.pgs-courtyard .pgs-zone-flowers { left:max(66px,17%); top:calc(50% + 4.8cqw); }
+.pgs-courtyard .pgs-lantern .pgs-shadow { display:none; }
+.pgs-courtyard .pgs-lantern .pgs-object { filter:var(--pgs-grade) drop-shadow(2px 3px 1.5px #22312b48); }
+.pgs-tide .pgs-cloth .pgs-object { transform:rotate(7deg); }
+.pgs-isles .pgs-cloth .pgs-object { transform:rotate(-6deg); }
+.pgs-shadow { position:absolute; width:calc(var(--pgs-width)*.82); height:7px; bottom:-2px; left:50%; transform:translateX(-44%) rotate(-4deg); background:radial-gradient(ellipse at 45% 43%,#2630269c 0%,#27322652 30%,transparent 73%); filter:blur(.6px); }
+.pgs-bouquet .pgs-shadow,.pgs-plant .pgs-shadow,.pgs-lantern .pgs-shadow { width:calc(var(--pgs-width)*.7); bottom:-1px; }
+.pgs-prop[aria-expanded=true] .pgs-object,.pgs-prop:focus-visible .pgs-object { filter:var(--pgs-grade) drop-shadow(0 0 2px #ffedb8) drop-shadow(0 1px 3px #634c1fa3); }
+@media (hover:hover) {
+  .pgs-prop:hover .pgs-object { transform:scale(1.06); }
+}
+.pgs-caption,.pgs-pending {
+  position:absolute; z-index:3; color:#fffcf3; background:#183332eb;
+  border:1px solid #eddbb749; box-shadow:0 5px 18px -10px #142523a6; border-radius:12px;
+  text-shadow:none; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+}
+.pgs-caption {
+  top:90px; width:min(48%,191px); box-sizing:border-box; padding:11px 13px 0;
+  pointer-events:auto; animation:pgs-appear .18s ease-out both; text-align:left;
+}
+.pgs-end { right:14px; }
+.pgs-start { left:14px; }
+.pgs-caption strong { display:block; padding-right:18px; color:#fff6db; font:500 16px/1.45 var(--font-serif); }
+.pgs-caption p,.pgs-caption blockquote { margin:3px 0 0; color:#e7ece4; font:12px/1.5 var(--font-sans); overflow-wrap:anywhere; }
+.pgs-caption blockquote { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; color:#fffaf0; }
+.pgs-keepsake p { padding-right:15px; }
+.pgs-dismiss { position:absolute; inset:0 0 auto auto; display:grid; place-items:center; width:36px; height:36px; background:transparent; color:#e9eee5; }
+.pgs-dismiss svg { width:13px; height:13px; }
+.pgs-receipt { display:flex; align-items:center; gap:5px; min-height:44px; border:0; background:transparent; color:#f8d9a6; font:600 13px/1.3 var(--font-sans); }
+.pgs-receipt svg { width:12px; height:12px; }
+.pgs-pending { top:101px; left:50%; transform:translateX(-50%); max-width:calc(100% - 40px); width:max-content; padding:7px 12px; font:12px/1.55 var(--font-sans); }
+@keyframes pgs-appear { from { opacity:0; transform:translateY(4px); } to {opacity:1; transform:translateY(0);} }
+.calm .pgs-caption,.calm .pgs-object { animation:none; transition:none; }
+@media (prefers-reduced-motion:reduce) { .pgs-object,.pgs-caption { animation:none; transition:none; } .pgs-prop:hover .pgs-object { transform:none; } }

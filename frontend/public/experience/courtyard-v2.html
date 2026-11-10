@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#171c16" />
+  <title>西界 · 雨后的旧院</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#171c16;color:#f6f1e5}body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;display:grid;place-items:center;min-height:100svh}
+    button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}button:focus-visible{outline:2px solid #f3e0b1;outline-offset:5px}button:disabled{cursor:wait}button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+    .experience{position:relative;isolation:isolate;width:min(440px,calc((100svh - 32px)*.5625),calc(100vw - 32px));aspect-ratio:9/16;overflow:hidden;background:#263025;border-radius:12px;box-shadow:0 22px 80px #0004}
+    .world{position:absolute;inset:0;transform-origin:49% 66%;transform:scale(1);transition:transform 1800ms cubic-bezier(.2,.65,.25,1);will-change:transform}
+    .experience[data-stage=table] .world,.experience[data-stage=memory] .world,.experience[data-stage=reply] .world{transform:scale(1.18)}
+    .world video,.world img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;display:block}
+    .world video{opacity:0;transition:opacity 800ms ease}.world video.ready{opacity:1}
+    .veil{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,#10190e40,transparent 24%,transparent 57%,#14201455 77%,#121b13bc);transition:background 1s}
+    .reading-shade{position:absolute;inset:45% 0 0;pointer-events:none;background:linear-gradient(180deg,transparent,#0d190aab 42%,#0e180ee8);opacity:0;transition:opacity 1100ms ease}
+    .experience[data-stage=memory] .reading-shade,.experience[data-stage=reply] .reading-shade{opacity:1}
+    .top{position:absolute;inset:0 0 auto;padding:calc(25px + env(safe-area-inset-top,0px)) 25px 0;display:flex;align-items:flex-start;justify-content:space-between;z-index:4}
+    .brand{font:400 25px/1.2 'Songti SC','SimSun',serif;letter-spacing:5px;text-shadow:0 1px 8px #10200c66}.place{display:block;margin-top:11px;font:11px/1.5 'Microsoft YaHei','PingFang SC',sans-serif;letter-spacing:2px;color:#eee9d8}
+    .back{display:none;align-items:center;gap:8px;min-height:44px;padding:0;border:0;background:none;font-size:12px;letter-spacing:1px;text-shadow:0 1px 6px #101c10}.experience:not([data-stage=arrive]) .back{display:flex}.experience:not([data-stage=arrive]) .brand{display:none}
+    .pause{border:0;background:#13200d3b;backdrop-filter:blur(7px);border-radius:50%;width:44px;height:44px;display:grid;place-items:center}.pause svg{width:16px;height:16px}
+    .section{position:absolute;left:0;right:0;bottom:110px;padding:0 29px;opacity:0;transform:translateY(14px);visibility:hidden;pointer-events:none;transition:opacity 700ms ease,transform 1000ms cubic-bezier(.2,.65,.25,1),visibility 1000ms;text-shadow:0 1px 14px #10200b8c;z-index:2}
+    .section.current{opacity:1;transform:translateY(0);visibility:visible;pointer-events:auto;transition-delay:220ms,180ms,0ms}
+    .entry{bottom:112px}.entry p{font:400 20px/1.85 'Songti SC','SimSun',serif;letter-spacing:1.5px;margin:0 0 21px}.text-button{display:inline-flex;align-items:center;gap:16px;background:none;border:0;border-bottom:1px solid #efe9d86b;padding:0 0 5px;min-height:44px;font-size:12px;letter-spacing:1px}.text-button svg{width:18px;height:18px;transition:transform .35s}.text-button:hover svg{transform:translateX(4px)}
+    .table-copy{bottom:118px;font-size:12px;letter-spacing:2px;color:#ece5d0}.table-copy p{margin:0;line-height:1.9}
+    .cup{position:absolute;left:49%;top:66%;transform:translate(-50%,-50%);width:100px;height:96px;background:transparent;border:0;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 700ms ease,visibility 800ms;z-index:2}
+    .experience[data-stage=table] .cup{opacity:1;visibility:visible;pointer-events:auto;transition-delay:900ms,0ms}.cup:after{content:'';position:absolute;left:28%;right:28%;top:66%;height:2px;background:#fbf0d3;box-shadow:0 0 12px #fff2c4b0}.cup span{position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;letter-spacing:2px;text-shadow:0 1px 8px #121b13,0 1px 5px #121b13}
+    .memory{bottom:111px}.memory .source{font-size:10px;letter-spacing:2px;color:#d5d4bd;margin:0 0 16px}.memory blockquote{font:400 24px/1.85 'Songti SC','SimSun',serif;letter-spacing:1px;margin:0 0 19px}.memory .detail{font-size:12px;line-height:1.9;max-width:25em;color:#dddac8;margin:0 0 20px}
+    .reply{bottom:111px}.reply .today{font-size:13px;line-height:1.9;color:#e3dfce;margin:0 0 25px}.reply .reply-label{font-size:10px;letter-spacing:2px;color:#cbcdb8;margin:0 0 13px}.reply .answer{font:400 24px/1.85 'Songti SC','SimSun',serif;letter-spacing:1px;margin:0 0 22px}
+    .bottom{position:absolute;left:25px;right:25px;bottom:calc(25px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:space-between;gap:15px;z-index:4}.location{font-size:10px;letter-spacing:3px;color:#dedbc9}.sound{display:flex;align-items:center;gap:10px;padding:0 0 0 10px;min-width:90px;min-height:44px;background:none;border:0;font-size:11px;letter-spacing:1px}.waves{display:flex;align-items:center;gap:3px;height:18px;opacity:.55}.waves i{width:1px;height:6px;background:currentColor;display:block}.waves i:nth-child(2){height:12px}.waves i:nth-child(3){height:9px}.sound[aria-pressed=true] .waves{opacity:1}.sound[aria-pressed=true] .waves i{animation:sound-wave 1.3s ease-in-out infinite alternate}.sound[aria-pressed=true] .waves i:nth-child(2){animation-delay:-.5s}.sound[aria-pressed=true] .waves i:nth-child(3){animation-delay:-.9s}@keyframes sound-wave{from{transform:scaleY(.4)}to{transform:scaleY(1)}}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.prototype-note{position:fixed;left:22px;bottom:18px;color:#a5ab9e;font-size:11px;letter-spacing:1px}
+    @media(max-width:600px){body{display:block}.experience{width:100%;height:100svh;min-height:560px;aspect-ratio:auto;border-radius:0;box-shadow:none}.prototype-note{display:none}.section{padding:0 27px}.memory blockquote,.reply .answer{font-size:25px}}
+    @media(max-height:650px){.top{padding-top:20px}.section{bottom:87px}.bottom{bottom:15px}.memory blockquote,.reply .answer{font-size:21px;line-height:1.75}.memory .detail{margin-bottom:12px}.memory .source{margin-bottom:10px}.reply .today{margin-bottom:16px}}
+    @media(prefers-reduced-motion:reduce){.world,.section,.world video,.reading-shade,.cup{transition:none!important}.sound .waves i{animation:none!important}}
+  </style>
+</head>
+<body>
+  <main class="experience" data-stage="arrive" aria-label="西界：雨后的旧院，交互草案">
+    <div class="world">
+      <img src="courtyard-v2.jpg" alt="雨后的旧院里，茶桌上放着两只蓝边搪瓷杯，一旁是披着棉布的竹椅" />
+      <video src="courtyard-v2.mp4" poster="courtyard-v2.jpg" muted playsinline loop preload="auto" aria-label="旧院里的叶片、茶汽和雨后微动"></video>
+      <audio class="ambience" src="courtyard-v2.mp4" loop preload="metadata"></audio>
+      <button class="cup" type="button" aria-label="看看茶桌上的蓝边搪瓷杯" tabindex="-1"><span>这只搪瓷杯</span></button>
+    </div>
+    <div class="veil" aria-hidden="true"></div><div class="reading-shade" aria-hidden="true"></div>
+    <header class="top">
+      <div class="brand">西界<span class="place">旧院 · 雨后</span></div>
+      <button class="back" type="button" aria-label="回到院子"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 6l-6 6 6 6"/></svg><span>回到院子</span></button>
+      <button class="pause" type="button" aria-label="暂停画面" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="pause-mark" d="M9 6v12M15 6v12"/></svg></button>
+    </header>
+    <section class="section entry current" data-panel="arrive" aria-label="走进旧院">
+      <p>雨停了。<br />在这儿坐一会儿。</p>
+      <button class="text-button" type="button" data-next="table">坐到桌边<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-5-5 5 5-5 5"/></svg></button>
+    </section>
+    <section class="section table-copy" data-panel="table" aria-label="茶桌旁" aria-hidden="true" inert><p>桌上的杯子，还是老样子。</p></section>
+    <section class="section memory" data-panel="memory" aria-label="杯子里的往事" aria-hidden="true" inert>
+      <p class="source">你留下的一段往事 · 示例</p>
+      <blockquote>她总把晾好的水，<br />放在这只蓝边杯里。</blockquote>
+      <p class="detail">放学回来，书包还没放下，就先端起来喝。<br />那时候，夏天好像总是很长。</p>
+      <button class="text-button" type="button" data-next="reply">今天，也想说一句<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-5-5 5 5-5 5"/></svg></button>
+    </section>
+    <section class="section reply" data-panel="reply" aria-label="从往事聊到今天" aria-hidden="true" inert>
+      <p class="today">今天，我也买了一只这样的杯子。</p>
+      <p class="reply-label">AI 陪伴 · 回应示例</p>
+      <p class="answer">放在家里的<br />什么地方了？</p>
+      <button class="text-button" type="button" data-next="table">再坐一会儿<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-5-5 5 5-5 5"/></svg></button>
+    </section>
+    <footer class="bottom"><span class="location">檐下 · 茶桌</span><button class="sound" type="button" aria-pressed="false"><span class="waves" aria-hidden="true"><i></i><i></i><i></i></span><span class="sound-label">听听这里</span></button></footer>
+    <p class="sr-only status" role="status" aria-live="polite"></p>
+  </main>
+  <span class="prototype-note">体验草案 · 场景与记忆均为创作示例</span>
+  <script>
+    (()=>{
+      const root=document.querySelector('.experience');
+      const video=root.querySelector('video');
+      const ambience=root.querySelector('.ambience');ambience.volume=0;
+      const cup=root.querySelector('.cup');
+      const sound=root.querySelector('.sound');
+      const soundLabel=root.querySelector('.sound-label');
+      const pause=root.querySelector('.pause');
+      const mark=root.querySelector('.pause-mark');
+      const back=root.querySelector('.back');
+      const status=root.querySelector('.status');
+      const motion=window.matchMedia('(prefers-reduced-motion: reduce)');
+      const state={stage:'arrive',sound:false,paused:motion.matches};
+      let volumeFrame=0;
+      function locateCup(){
+        const w=root.clientWidth,h=root.clientHeight;
+        const iw=video.videoWidth||944,ih=video.videoHeight||1672;
+        const ratio=Math.max(w/iw,h/ih);
+        cup.style.left=((w-iw*ratio)/2+iw*ratio*.495)+'px';
+        cup.style.top=((h-ih*ratio)/2+ih*ratio*.665)+'px';
+      }
+      function volumeTo(target){
+        cancelAnimationFrame(volumeFrame);
+        const start=ambience.volume,started=performance.now();
+        const tick=now=>{const progress=Math.min(1,(now-started)/650);ambience.volume=start+(target-start)*progress;if(progress<1)volumeFrame=requestAnimationFrame(tick);else if(!state.sound)ambience.pause();};
+        volumeFrame=requestAnimationFrame(tick);
+      }
+      function renderControls(){
+        pause.setAttribute('aria-label',state.paused?'播放画面':'暂停画面');pause.setAttribute('aria-pressed',String(state.paused));
+        mark.setAttribute('d',state.paused?'M9 5l10 7-10 7z':'M9 6v12M15 6v12');
+        sound.setAttribute('aria-pressed',String(state.sound));soundLabel.textContent=state.sound?'声音已开':'听听这里';
+      }
+      function go(stage){
+        if(!['arrive','table','memory','reply'].includes(stage))return;
+        state.stage=stage;root.dataset.stage=stage;
+        root.querySelectorAll('[data-panel]').forEach(panel=>{const active=panel.dataset.panel===stage;panel.classList.toggle('current',active);panel.inert=!active;panel.setAttribute('aria-hidden',String(!active));});
+        cup.tabIndex=stage==='table'?0:-1;cup.setAttribute('aria-hidden',String(stage!=='table'));
+        const backLabel=stage==='reply'?'回到那段往事':stage==='memory'?'回到茶桌旁':'回到院子';back.querySelector('span').textContent=backLabel;back.setAttribute('aria-label',backLabel);
+        if(state.sound)volumeTo((stage==='memory'||stage==='reply') ? 0.14 : 0.3);
+        status.textContent={arrive:'回到旧院',table:'来到茶桌旁，可以打开杯子的回忆',memory:'打开一段示例记忆',reply:'从往事聊到今天：AI 回应示例'}[stage];
+        const focusTarget=stage==='arrive'?root.querySelector('[data-next=table]'):back;focusTarget.focus({preventScroll:true});
+      }
+      root.querySelectorAll('[data-next]').forEach(button=>button.addEventListener('click',()=>go(button.dataset.next)));
+      cup.addEventListener('click',()=>go('memory'));
+      back.addEventListener('click',()=>go({table:'arrive',memory:'table',reply:'memory'}[state.stage]||'arrive'));
+      video.volume=0;video.muted=true;
+      video.addEventListener('loadedmetadata',locateCup);video.addEventListener('playing',()=>video.classList.add('ready'));
+      video.addEventListener('error',()=>{state.paused=true;state.sound=false;renderControls();status.textContent='视频暂时无法播放，已显示静态场景。';});
+      ambience.addEventListener('error',()=>{state.sound=false;renderControls();status.textContent='声音暂时无法播放，仍可继续看看院子。';});
+      pause.addEventListener('click',async()=>{
+        state.paused=!state.paused;
+        if(state.paused)video.pause();else{try{await video.play();}catch{state.paused=true;status.textContent='画面暂时无法播放，请稍后重试。';}}
+        renderControls();
+      });
+      sound.addEventListener('click',async()=>{
+        if(state.sound){state.sound=false;volumeTo(0);renderControls();return;}
+        try{await ambience.play();state.sound=true;volumeTo((state.stage==='memory'||state.stage==='reply') ? 0.14 : 0.3);renderControls();}
+        catch{state.sound=false;renderControls();status.textContent='声音未能播放，可以再试一次。';}
+      });
+      document.addEventListener('visibilitychange',()=>{if(document.hidden){video.pause();ambience.pause();}else{if(!state.paused)video.play().catch(()=>{state.paused=true;renderControls();});if(state.sound)ambience.play().catch(()=>{state.sound=false;renderControls();});}});
+      window.addEventListener('pagehide',()=>{video.pause();ambience.pause();cancelAnimationFrame(volumeFrame);});
+      motion.addEventListener('change',()=>{if(motion.matches){state.paused=true;video.pause();renderControls();}});
+      root.addEventListener('keydown',event=>{if(event.key==='Escape'&&state.stage!=='arrive'){back.click();}});
+      new ResizeObserver(locateCup).observe(root);locateCup();renderControls();
+      if(!state.paused)video.play().catch(()=>{state.paused=true;renderControls();});
+    })();
+  </script>
+</body>
+</html>

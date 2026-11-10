@@ -1,0 +1,34 @@
+/* Film and recognition share the app viewport, the daylight palette and the last camera position. */
+.journey-flight, .journey-result { position:absolute; inset:0; overflow:hidden; isolation:isolate; background:var(--sky-floor); }
+.journey-flight { animation:fade .38s ease-out both; }
+.journey-still, .wl-cinema { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:brightness(1.11) saturate(1.04); }
+.journey-flight::after,.journey-result::after { content:''; position:absolute; pointer-events:none; inset:0 0 auto; height:100px; background:linear-gradient(to bottom,#112d3963,transparent); }
+.journey-top { position:absolute; z-index:1; inset:49px 17px auto; display:flex; justify-content:space-between; align-items:center; }
+.journey-pill { min-height:44px; min-width:44px; display:grid; place-items:center; border-radius:24px; padding:0 14px; font-size:12px; background:var(--sky-floor); color:var(--color-pearl); box-shadow:0 1px 6px #15333324; }
+.journey-pill svg { width:17px; height:17px; }
+.journey-panel { position:absolute; inset:auto 0 0; z-index:1; padding:18px 23px 24px; border-radius:24px 24px 0 0; color:var(--color-pearl); background:linear-gradient(150deg,color-mix(in srgb,var(--sky-floor) 98%,transparent),color-mix(in srgb,var(--sky-floor) 91%,var(--sky-mist))); box-shadow:0 -9px 35px -21px #122a32; border-top:1px solid var(--receiver-glass); }
+.journey-eyebrow { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--color-ink-soft); letter-spacing:.09em; }
+.journey-eyebrow>span { width:6px; height:6px; transform:rotate(45deg); background:var(--instrument-track); }
+.journey-eyebrow b { font-weight:600; color:var(--color-pearl); }
+.journey-range { margin:12px 0 9px; padding:0; display:flex; gap:5px; }
+.journey-range li { display:flex; flex:1; gap:5px; align-items:center; font:10px var(--font-sans); color:var(--color-ink-soft); }
+.journey-range li::before { content:''; width:14px; height:2px; border-radius:2px; background:var(--receiver-border); }
+.journey-range li[data-on=true]::before { background:var(--instrument-track); }
+.journey-range li[aria-current=step] { color:var(--color-pearl); font-weight:650; }
+.journey-reading h2 { margin:3px 0; font:500 25px/1.32 var(--font-serif); }
+.journey-reading p { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; min-height:1.55em; color:var(--color-ink-soft); font:14px/1.55 var(--font-serif); overflow-wrap:anywhere; }
+.journey-flight .journey-reading p { min-height:3.1em; }
+.journey-controls { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:11px; border-top:1px solid var(--receiver-border); }
+.journey-controls button { min-height:42px; color:var(--color-ink-soft); font-size:13px; }
+.journey-controls button:last-child { margin-left:auto; display:flex; align-items:center; gap:4px; font-weight:600; color:var(--instrument-track); }
+.journey-result .journey-panel { max-height:calc(100% - 70px); overflow-y:auto; }
+.journey-result[data-connecting=true] .journey-panel { animation:fade .3s ease-out reverse both; pointer-events:none; }
+.journey-result[data-connecting=true] .journey-lens { opacity:0; }
+.journey-transfer { position:absolute; z-index:7; display:inline-flex; animation:journey-transfer 1s .2s cubic-bezier(.65,0,.35,1) both; }
+@keyframes journey-transfer {
+  from { transform:translate(0,0) scale(1); }
+  to { transform:translate(var(--dx),var(--dy)) scale(var(--scale)); }
+}
+@media (max-height:640px) { .journey-panel { padding:12px 19px 15px; } .journey-top { top:40px; } }
+@media(prefers-reduced-motion:reduce) { .journey-flight { animation:none; } }
+.calm .journey-flight { animation:none; }
