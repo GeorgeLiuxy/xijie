@@ -1,0 +1,175 @@
+{
+  "format": 1,
+  "verifiedAt": "2026-11-15T17:20:20.319398+00:00",
+  "project": "xijie-hs-05b669b025",
+  "sources": {
+    "backend": "8e75ce7cce0b462b37d76601ac264a7f603674cc",
+    "webSdk": "f6f83b9c565753dbef70d7f97e03125150e9a1d3",
+    "sharedCode": "8302158df08f849201f2752ae282b3309f8ba49a"
+  },
+  "images": {
+    "router": {
+      "Id": "sha256:e896a9096cbfa28de8cc261947040ff49f83f2a3d45c819840f4f840b95b46c3",
+      "RepoTags": [
+        "xijie-hs-05b669b025-router:8e75ce7c"
+      ],
+      "RepoDigests": [
+        "xijie-hs-05b669b025-router@sha256:e896a9096cbfa28de8cc261947040ff49f83f2a3d45c819840f4f840b95b46c3"
+      ],
+      "Descriptor": {
+        "mediaType": "application/vnd.oci.image.index.v1+json",
+        "digest": "sha256:e896a9096cbfa28de8cc261947040ff49f83f2a3d45c819840f4f840b95b46c3",
+        "size": 856
+      }
+    },
+    "sdk": {
+      "Id": "sha256:7525c7934de60afcb065aa6560728da08c8c2418a71bc7dfc959b5575ed84a3b",
+      "RepoTags": [
+        "xijie-hs-05b669b025-sdk:f6f83b9c"
+      ],
+      "RepoDigests": [
+        "xijie-hs-05b669b025-sdk@sha256:7525c7934de60afcb065aa6560728da08c8c2418a71bc7dfc959b5575ed84a3b"
+      ],
+      "Descriptor": {
+        "mediaType": "application/vnd.oci.image.index.v1+json",
+        "digest": "sha256:7525c7934de60afcb065aa6560728da08c8c2418a71bc7dfc959b5575ed84a3b",
+        "size": 856
+      }
+    },
+    "migration": {
+      "Id": "sha256:de35543d9ee90bde242633c112a20a967ab686e89642561d29955760e0d09b84",
+      "RepoTags": [
+        "xijie-hs-05b669b025-migrations:diesel2.3.5"
+      ],
+      "RepoDigests": [
+        "xijie-hs-05b669b025-migrations@sha256:de35543d9ee90bde242633c112a20a967ab686e89642561d29955760e0d09b84"
+      ],
+      "Descriptor": {
+        "mediaType": "application/vnd.oci.image.index.v1+json",
+        "digest": "sha256:de35543d9ee90bde242633c112a20a967ab686e89642561d29955760e0d09b84",
+        "size": 856
+      }
+    }
+  },
+  "baseImages": {
+    "rust": "rust:1.94.1-trixie@sha256:652612f07bfbbdfa3af34761c1e435094c00dde4a98036132fca28c7bb2b165c",
+    "runtime": "debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2",
+    "node": "node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5",
+    "nginx": "nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236",
+    "pg": "postgres:16-alpine@sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e",
+    "redis": "redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe",
+    "superposition": "ghcr.io/juspay/superposition-demo@sha256:51f3a310016879b7419ab64e6b6dbc81c739cdf5985f8f4cc19ba6f9384b2c6d"
+  },
+  "healthyServices": [
+    {
+      "service": "pg",
+      "state": "running",
+      "health": "healthy"
+    },
+    {
+      "service": "proxy",
+      "state": "running",
+      "health": "healthy"
+    },
+    {
+      "service": "redis",
+      "state": "running",
+      "health": "healthy"
+    },
+    {
+      "service": "router",
+      "state": "running",
+      "health": "healthy"
+    },
+    {
+      "service": "sdk",
+      "state": "running",
+      "health": "healthy"
+    },
+    {
+      "service": "superposition",
+      "state": "running",
+      "health": "healthy"
+    }
+  ],
+  "migrationCount": 564,
+  "configurationSeed": {
+    "dimensions": 23,
+    "defaults": 1704,
+    "contexts": 912
+  },
+  "syntheticFacts": {
+    "merchants": 1,
+    "realMerchantCredentialsConfigured": false,
+    "connectors": 0,
+    "paymentIntents": 1,
+    "succeededPayments": 0,
+    "refunds": 0,
+    "status": "requires_payment_method",
+    "amountReceived": null
+  },
+  "browser": {
+    "actualPaymentLinkRendered": true,
+    "selfHostedHyperLoader200": true,
+    "selfHostedSdkApp200": true,
+    "selfHostedFrame": true,
+    "cloudApiRequests": 0,
+    "telemetryRequests": 0,
+    "blockedExternalRequests": 19,
+    "confirmRequests": 0,
+    "paymentExecuted": false
+  },
+  "localApiReadStatuses": [
+    {
+      "pathKind": "payment_link",
+      "status": 200
+    },
+    {
+      "pathKind": "/payments/session_tokens",
+      "status": 200
+    },
+    {
+      "pathKind": "/v1/sdk/configs/web/sdk_config.json",
+      "status": 200
+    },
+    {
+      "pathKind": "payment_client",
+      "status": 200
+    },
+    {
+      "pathKind": "/v1/sdk/configs/web/sdk_config.json",
+      "status": 200
+    },
+    {
+      "pathKind": "payment_client",
+      "status": 200
+    },
+    {
+      "pathKind": "/payments/session_tokens",
+      "status": 200
+    }
+  ],
+  "restart": {
+    "sameDatabaseCluster": true,
+    "sameCredentials": true,
+    "sameBusinessCounts": true
+  },
+  "merchantPaymentVerified": false,
+  "walletDeviceVerified": false,
+  "finalState": "stopped_data_and_images_preserved",
+  "finalStateEvidence": {
+    "project": "xijie-hs-05b669b025",
+    "stoppedContainers": true,
+    "containerCount": 0,
+    "closedLoopbackPorts": {
+      "28180": true,
+      "28150": true
+    },
+    "preservedVolumes": [
+      "xijie-hs-05b669b025_pg_data",
+      "xijie-hs-05b669b025_redis_data",
+      "xijie-hs-05b669b025_superposition_data"
+    ],
+    "checkedAt": "2026-11-15T17:21:19.362060+00:00"
+  }
+}

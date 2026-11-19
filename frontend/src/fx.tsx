@@ -21,7 +21,7 @@ export type CosmosKind = keyof typeof COSMOS
 export function DeepField({ variant = 'deep', stars = false, className = '', dim = 0.55 }: { variant?: CosmosKind; stars?: boolean; className?: string; dim?: number }) {
   return (
     <div className={`absolute inset-0 overflow-hidden bg-abyss ${className}`} aria-hidden>
-      <img src={COSMOS[variant]} alt="" className="absolute inset-0 h-full w-full object-cover fx cosmos-drift" />
+      <div className="absolute inset-0 bg-cover bg-center fx cosmos-drift" style={{ backgroundImage: `url(${COSMOS[variant]})` }} />
       <div className="absolute inset-0" style={{ background: `radial-gradient(130% 85% at 50% 18%, rgba(10,23,25,${dim * 0.25}) 0%, rgba(10,23,25,${dim}) 58%, rgba(7,16,18,${Math.min(0.96, dim + 0.38)}) 100%)` }} />
       {stars && <Stars count={26} />}
       <div className="absolute inset-0 grain opacity-[0.05]" />
@@ -49,7 +49,7 @@ export function Veil({ tone = 'deep', className = '', style }: { tone?: 'deep' |
   const deep = tone === 'deep'
   return (
     <div className={`pointer-events-none absolute overflow-hidden ${className}`} style={style} aria-hidden>
-      <img src={COSMOS.swirl} alt="" className="absolute inset-0 h-full w-full object-cover fx cosmos-drift" style={{ opacity: deep ? 0.9 : 0.42, filter: deep ? 'none' : 'saturate(0.85) brightness(1.25)' }} />
+      <div className="absolute inset-0 bg-cover bg-center fx cosmos-drift" style={{ backgroundImage: `url(${COSMOS.swirl})`, opacity: deep ? 0.9 : 0.42, filter: deep ? 'none' : 'saturate(0.85) brightness(1.25)' }} />
       {!deep && <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(247,245,239,0.55) 0%, rgba(247,245,239,0.25) 45%, rgba(247,245,239,0.7) 100%)' }} />}
       {deep && <div className="absolute inset-0" style={{ background: 'radial-gradient(90% 70% at 50% 50%, rgba(10,23,25,0) 0%, rgba(10,23,25,0.45) 100%)' }} />}
       <div className="absolute inset-y-0 -left-1/2 w-1/2 fx sheen" style={{ background: `linear-gradient(100deg, rgba(255,243,220,0) 0%, rgba(255,243,220,${deep ? 0.16 : 0.45}) 50%, rgba(255,243,220,0) 100%)` }} />

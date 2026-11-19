@@ -39,7 +39,7 @@ export function GiftMessageCard({ owner, person, direction, giftId, onOpen }: {
     : (zh ? `${person.name}的剧情回礼` : `A story gift from ${person.name}`)
   const unopened = !!received && received.openedAt == null
   const state = sent
-    ? hasArrived(sent, now) ? (zh ? '已抵达' : 'Delivered') : (zh ? '投递中' : 'In transit')
+    ? sent.status === 'delivery_failed' ? (zh ? '投递未完成' : 'Delivery failed') : hasArrived(sent, now) ? (zh ? '已抵达' : 'Delivered') : (zh ? '投递中' : 'In transit')
     : unopened ? (zh ? '待拆' : 'Unopened') : received?.placement === 'space' ? (zh ? '已陈列' : 'On display') : (zh ? '已拆开' : 'Opened')
   const action = sent ? (zh ? '查看回执' : 'View receipt') : unopened ? (zh ? '拆开礼物' : 'Unwrap') : (zh ? '查看礼物' : 'View gift')
   return <div className="gm-message" data-direction={direction}>

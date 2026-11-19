@@ -1,0 +1,28 @@
+-- Gathering is an independent purpose. Published policies and earlier decisions
+-- are unchanged; neither storage nor existing AI permission implies this grant.
+ALTER TABLE policy_versions DROP CONSTRAINT policy_versions_kind_check;
+ALTER TABLE policy_versions ADD CONSTRAINT policy_versions_kind_check CHECK(kind IN ('privacy_notice','private_story_storage','ai_text_processing','private_photo_storage','private_person_photo_storage','virtual_gift_storage','person_gift_returns','gift_delivery_photo_storage','private_letter_storage','person_letter_replies','person_gather_replies','private_chat_photo_storage','person_chat_image_replies'));
+ALTER TABLE consent_events DROP CONSTRAINT consent_events_purpose_check;
+ALTER TABLE consent_events ADD CONSTRAINT consent_events_purpose_check CHECK(purpose IN ('privacy_notice','private_story_storage','ai_text_processing','private_photo_storage','private_person_photo_storage','virtual_gift_storage','person_gift_returns','gift_delivery_photo_storage','private_letter_storage','person_letter_replies','person_gather_replies','private_chat_photo_storage','person_chat_image_replies'));
+ALTER TABLE consent_events DROP CONSTRAINT consent_events_check;
+ALTER TABLE consent_events ADD CONSTRAINT consent_events_check CHECK((purpose='privacy_notice' AND decision='acknowledge') OR (purpose IN ('private_story_storage','ai_text_processing','private_photo_storage','private_person_photo_storage','virtual_gift_storage','person_gift_returns','gift_delivery_photo_storage','private_letter_storage','person_letter_replies','person_gather_replies','private_chat_photo_storage','person_chat_image_replies') AND decision IN ('grant','revoke')));
+ALTER TABLE consent_events DROP CONSTRAINT consent_events_ai_notice_binding;
+ALTER TABLE consent_events ADD CONSTRAINT consent_events_ai_notice_binding CHECK(CASE
+ WHEN purpose IN ('ai_text_processing','private_photo_storage','private_person_photo_storage','virtual_gift_storage','person_gift_returns','gift_delivery_photo_storage','private_letter_storage','person_letter_replies','person_gather_replies','private_chat_photo_storage','person_chat_image_replies') AND decision='grant' THEN notice_authorization_version IS NOT NULL AND notice_authorization_version>0
+ WHEN purpose='private_story_storage' AND decision='grant' THEN notice_authorization_version IS NULL OR notice_authorization_version>0
+ ELSE notice_authorization_version IS NULL END);
+
+INSERT INTO policy_versions(id,kind,version,document_zh_cn,document_en) VALUES
+('3eb49775-1dbf-4cd2-a47b-c24434729ba8','person_chat_image_replies',1,'西界 AI 看图回应授权（OpenAI 联调）
+
+这是虚构人物对本人单张聊天照片作一次真实视觉回应的独立 AI 用途，不扩大或自动授予旧 AI 文字处理、照片保存、书信、赠礼或围坐用途。新发送须同时允许私人文字保存、聊天照片保存和本用途。
+允许后，你此后主动提交的单张聊天照片，可将经验证并剥除元数据的规范化图片、当前人物的必要文字资料、当前虚拟世界和最近已提交的迁居发送至 OpenAI API，生成明确标识为 AI 的文字回应。不会发送未发文字草稿、旧照片、旧私聊、珍藏、长期记忆、书信或围坐历史。人物、世界和图片中的文字仅为引用内容，不是系统指令。模型可能看错，不代表真实人物意识或对现实事实的核验，不识别图中人物身份或推断敏感属性。
+每条来源最多保存一份真实回复，暂时故障最多三次业务尝试，失败不用模板补成功，不承诺外部请求恰好调用一次。请求使用 store:false。保存必要来源版本、人物及虚拟世界引用、模型、响应标识和提示版本，不保存密钥或公开图片地址；模型前后和写回前核对精确账号、人物、私人保存、照片保存及看图授权版本。撤回无法收回已发给 OpenAI 的内容。
+本片照片及看图回复不进入后续文字 AI 上下文、自动长期记忆、候选珍藏或围坐，不自动执行剧情、迁居、赠礼、支付、资产发放、推送或跨账号通信。旧 AI 文字许可不能替代本用途。
+你可以单独撤回，停止新处理、剩余重试和迟到写回，不删除已保存图片或回复；它们分别按聊天照片保存和私人文字保存权限读取。重授不复活旧任务。源消息删除、人物失效或账号注销同样停止相关任务。独立导出和注销不要求重新授予，包含必要来源和任务记录。本授权仅用于名单内合成账号的非生产本机验证，不表示生产发布。','Xijie AI image reply permission (OpenAI sandbox)
+
+This independent AI purpose covers one actual visual reply to a single photo submitted in a direct chat with a fictional character. It does not expand or grant old AI text processing, photo storage, letters, gifts or gatherings. New sends require private text storage, chat photo storage and this purpose together.
+A newly submitted photo may send its validated normalized image with metadata stripped, necessary current character text, current virtual world and recent committed moves to the OpenAI API for an explicitly AI-labelled text reply. It excludes unsent drafts, old photos, private-chat histories, treasured or long-term memories, letters and gathering history. Profile, world and image text are quoted content, not system instructions. The model may misinterpret images; it does not represent real-person consciousness or verified reality, identify people or infer sensitive attributes.
+Each source has at most one saved actual reply and at most three business attempts. Templates never replace failed output; exactly-once external requests are not promised. Requests use store:false. Necessary source versions, profile/world references, model, response identifier and prompt version are saved without secrets or public image URLs. Exact account, character, private text, photo and image-reply authorization versions are checked before and after generation and before commit. Withdrawal cannot recall content already sent to OpenAI.
+Photos and visual replies do not enter later text AI, automatic long-term memory, suggested treasured memories or gatherings in this release, and trigger no world stories, moves, gifts, payments, assets, push notifications or cross-account communication. Old AI text permission cannot substitute for this purpose.
+Withdrawal stops new processing, remaining retries and late writeback without deleting saved images or replies, which remain readable under chat-photo and private-text storage respectively. Renewed permission never revives old tasks. Source deletion, lost character access or erasure also stops work. Independent export and erasure require no renewed permission and include necessary source/task records. This purpose is limited to allowlisted synthetic accounts in non-production local verification, not production release.');

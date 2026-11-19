@@ -1,0 +1,29 @@
+{
+  "provider": "self-hosted Logto",
+  "version": "1.46.0",
+  "commit": "d179bf9d2d51104236a342b90c2841df66e4ba5b",
+  "license": "MPL-2.0",
+  "baseImage": "ghcr.io/logto-io/logto:1.46.0@sha256:d5e208ce705cbcf7c79ddba421216eb65413d0b0531aa658fb22a4ba659be983",
+  "auditPatch": "deploy/logto-auth/apply-auth-redaction.cjs",
+  "protocol": "OIDC Authorization Code with S256 PKCE, state, nonce, signed ID token and exact issuer/subject",
+  "routing": {"apple":"social:apple","google":"social:google","wechat":"social:wechat"},
+  "password": "Official Logto Experience password and ForgotPassword APIs; no local password verifier database",
+  "boundPhoneReader": "Self-hosted: dedicated read-only PostgreSQL role on a fixed tenant two-column security_barrier view; no all Management API grant",
+  "wechatNative": {"sdk":"com.tencent.mm.opensdk:wechat-sdk-android:6.8.40","connector":"official connector-wechat-native","callback":"${applicationId}.wxapi.WXEntryActivity","enabledByDefault":false},
+  "sourceFiles": [
+    "https://github.com/logto-io/logto/blob/d179bf9d2d51104236a342b90c2841df66e4ba5b/packages/experience/src/pages/DirectSignIn/index.tsx",
+    "https://github.com/logto-io/logto/blob/d179bf9d2d51104236a342b90c2841df66e4ba5b/packages/integration-tests/src/tests/experience/direct-sign-in.test.ts",
+    "https://github.com/logto-io/logto/blob/d179bf9d2d51104236a342b90c2841df66e4ba5b/packages/connectors/connector-apple/src/constant.ts",
+    "https://github.com/logto-io/logto/blob/d179bf9d2d51104236a342b90c2841df66e4ba5b/packages/connectors/connector-wechat-web/src/constant.ts",
+    "https://github.com/logto-io/logto/blob/d179bf9d2d51104236a342b90c2841df66e4ba5b/packages/connectors/connector-google/src/constant.ts",
+    "https://github.com/logto-io/logto/blob/d179bf9d2d51104236a342b90c2841df66e4ba5b/packages/connectors/connector-wechat-native/src/index.ts",
+    "https://github.com/logto-io/logto/blob/d179bf9d2d51104236a342b90c2841df66e4ba5b/packages/core/src/routes/experience/profile-routes.ts",
+    "https://github.com/logto-io/logto/blob/d179bf9d2d51104236a342b90c2841df66e4ba5b/packages/core/src/utils/sensitive-data.ts"
+  ],
+  "localOidcAndCallbackVerification": "synthetic HTTP identity provider, real openid-client discovery/token/JWKS checks and isolated PostgreSQL",
+  "realAppleVerified": false,
+  "realGoogleVerified": false,
+  "realWechatVerified": false,
+  "realSmsVerified": false,
+  "nativeBrowserHandoffVerified": false
+}

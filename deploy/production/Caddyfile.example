@@ -1,0 +1,85 @@
+{
+    admin off
+    auto_https off
+}
+
+# This example listens only on loopback. Replace every example name/path and provision
+# certificates before use. A separately managed external ingress may forward to 8443.
+https://app.example.test:8443 {
+    bind 127.0.0.1
+    tls /absolute/private/app-fullchain.pem /absolute/private/app-key.pem
+    header Referrer-Policy "no-referrer"
+    route {
+        @internal path /internal/* /v1/ops/*
+        respond @internal 404
+        @conversationSearch {
+            path /v1/search
+            query scope=conversations
+        }
+        reverse_proxy @conversationSearch 127.0.0.1:3103
+        @memoryJob {
+            path /v1/generation-jobs/*
+            query kind=memory_suggestion
+        }
+        reverse_proxy @memoryJob 127.0.0.1:3104
+        @identity path /v1/auth/* /v1/sessions/* /v1/accounts/* /v1/policies/* /v1/data-request-receipts/* /v1/referrals/* /v1/public/referrals/* /v1/content-reports /v1/content-reports/*
+        reverse_proxy @identity 127.0.0.1:3101
+        @letters path /v1/persons/*/letters /v1/persons/*/letters/* /v1/persons/*/story-branches /v1/persons/*/story-branches/* /v1/persons/*/offline-life /v1/persons/*/offline-life/*
+        reverse_proxy @letters 127.0.0.1:3103
+        @memories path /v1/persons/*/memories /v1/persons/*/memories/* /v1/persons/*/memory-candidates /v1/persons/*/memory-candidates/* /v1/persons/*/memory-imports /v1/search
+        reverse_proxy @memories 127.0.0.1:3104
+        @people path /v1/person-drafts /v1/person-drafts/* /v1/persons /v1/persons/* /v1/person-reminders /v1/person-reminders/* /v1/worlds /v1/worlds/*
+        reverse_proxy @people 127.0.0.1:3102
+        @conversations path /v1/conversations /v1/conversations/* /v1/call-sessions /v1/call-sessions/* /v1/generation-jobs/* /v1/story-branches /v1/story-branches/* /v1/story-generation-jobs/*
+        reverse_proxy @conversations 127.0.0.1:3103
+        @social path /v1/feed /v1/feed/* /v1/posts /v1/posts/* /v1/social-generation-jobs/* /v1/shared-albums /v1/shared-albums/* /v1/public/shared-albums/*
+        reverse_proxy @social 127.0.0.1:3105
+        @media path /v1/person-voices /v1/person-voices/* /v1/media /v1/media/*
+        reverse_proxy @media 127.0.0.1:3106
+        @gifts path /v1/gift-catalog /v1/gift-catalog/* /v1/gift-deliveries /v1/gift-deliveries/* /v1/gift-delivery-photos /v1/gift-delivery-photos/* /v1/received-gifts /v1/received-gifts/* /v1/notifications /v1/notifications/* /v1/wallet /v1/wallet/* /v1/products /v1/products/* /v1/purchase-quotes /v1/purchase-quotes/* /v1/orders /v1/orders/* /v1/callbacks/payments/* /v1/callbacks/refunds/*
+        reverse_proxy @gifts 127.0.0.1:3107
+        @unknownApi path /v1/* /api/*
+        respond @unknownApi 404
+        root * /absolute/workspace/dist
+        try_files {path} /index.html
+        file_server
+    }
+}
+
+# Private HTTPS service origins must never be published by the external ingress.
+# Use separate SAN certificates or one internal certificate valid for all seven names.
+https://identity.internal.example.test:9443 {
+    bind 127.0.0.1
+    tls /absolute/private/internal-fullchain.pem /absolute/private/internal-key.pem
+    reverse_proxy 127.0.0.1:3101
+}
+https://people.internal.example.test:9443 {
+    bind 127.0.0.1
+    tls /absolute/private/internal-fullchain.pem /absolute/private/internal-key.pem
+    reverse_proxy 127.0.0.1:3102
+}
+https://conversations.internal.example.test:9443 {
+    bind 127.0.0.1
+    tls /absolute/private/internal-fullchain.pem /absolute/private/internal-key.pem
+    reverse_proxy 127.0.0.1:3103
+}
+https://memories.internal.example.test:9443 {
+    bind 127.0.0.1
+    tls /absolute/private/internal-fullchain.pem /absolute/private/internal-key.pem
+    reverse_proxy 127.0.0.1:3104
+}
+https://social.internal.example.test:9443 {
+    bind 127.0.0.1
+    tls /absolute/private/internal-fullchain.pem /absolute/private/internal-key.pem
+    reverse_proxy 127.0.0.1:3105
+}
+https://media.internal.example.test:9443 {
+    bind 127.0.0.1
+    tls /absolute/private/internal-fullchain.pem /absolute/private/internal-key.pem
+    reverse_proxy 127.0.0.1:3106
+}
+https://gifts.internal.example.test:9443 {
+    bind 127.0.0.1
+    tls /absolute/private/internal-fullchain.pem /absolute/private/internal-key.pem
+    reverse_proxy 127.0.0.1:3107
+}

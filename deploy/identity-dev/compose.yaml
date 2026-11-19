@@ -1,0 +1,54 @@
+services:
+  logto-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: logto
+      POSTGRES_USER: logto
+      POSTGRES_PASSWORD: ${LOGTO_DB_PASSWORD:?Set LOGTO_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U logto -d logto"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - logto-db:/var/lib/postgresql/data
+    # A separate role can read only the fixed phone view; never use the Logto owner here.
+    ports:
+      - "127.0.0.1:5441:5432"
+
+  logto:
+    image: xijie/logto-auth:1.46.0-r1
+    build:
+      context: ../logto-auth
+    depends_on:
+      logto-db:
+        condition: service_healthy
+    # The official SMS mock writes provider-generated OTPs inside this development container only.
+    entrypoint: ["sh", "-c", "if [ ! -e packages/core/connectors/@logto-connector-mock-sms ]; then ln -s ../../connectors/connector-mock-sms packages/core/connectors/@logto-connector-mock-sms; fi; npm run cli db seed -- --swe --disable-admin-pwned-password-check && exec npm start"]
+    environment:
+      DB_URL: postgres://logto:${LOGTO_DB_PASSWORD:?Set LOGTO_DB_PASSWORD}@logto-db:5432/logto
+      ENDPOINT: http://localhost:3001
+      ADMIN_ENDPOINT: http://localhost:3002
+    ports:
+      - "127.0.0.1:3001:3001"
+      - "127.0.0.1:3002:3002"
+
+  identity-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: xijie_identity
+      POSTGRES_USER: xijie_identity
+      POSTGRES_PASSWORD: ${XIJIE_IDENTITY_DB_PASSWORD:?Set XIJIE_IDENTITY_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U xijie_identity -d xijie_identity"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - identity-db:/var/lib/postgresql/data
+
+volumes:
+  logto-db:
+  identity-db:

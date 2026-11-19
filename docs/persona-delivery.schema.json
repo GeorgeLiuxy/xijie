@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "西界单条回复的朗读意图（设计契约 v1）",
+  "description": "随已生成的回复保存。只表达相对这个人物平时说话方式的变化；服务端按本轮能力目录校验键，并另行决定音源、权限和供应商参数。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "adjustments"],
+  "properties": {
+    "version": { "const": 1 },
+    "adjustments": {
+      "type": "object",
+      "description": "键来自本次请求附带的已验证控制项目录。空对象表示沿用人物基线。数值是相对趋势，无物理单位。",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9_]{0,31}$" },
+      "maxProperties": 6,
+      "additionalProperties": { "type": "number", "minimum": -1, "maximum": 1 }
+    }
+  },
+  "examples": [
+    { "version": 1, "adjustments": {} },
+    { "version": 1, "adjustments": { "pace": -0.2, "pause": 0.25 } },
+    { "version": 1, "adjustments": { "energy": 0.3 } }
+  ]
+}

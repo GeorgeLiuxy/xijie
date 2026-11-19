@@ -2,17 +2,25 @@
 
 ## 现状与设计范围
 
-当前前端的主要路径已覆盖账号切换、寻找 TA、人物与世界、对话与书信、记忆和动态、礼物与邀请、购买及订单。这一版足够冻结第一轮接口的用户路径。距离上线还有真实会话、跨设备恢复、账号注销、媒体授权与清除、正式 AI 生成、验单与退款、原生回跳等工作。
+当前前端的主要路径已覆盖账号切换、寻找 TA、人物与世界、对话与书信、记忆和动态、礼物与邀请、购买及订单。原前端中的文字账号、人物、真实 AI 直聊、珍藏及自动文字记忆、迁居、私人文字动态、数据导出／注销已有独立后端的本机验收；具体增量以[交付接续](./backend-delivery-priorities.md)为准。R02 真实 AI 回礼、收件与赠礼旅途留影原 UI、七域权利及八库恢复已完成本机合成账号验收，范围见接续。正式支付、未选媒体扩展及其他原型入口不能据此视为接入完成，原生发行与生产恢复也需独立验收。
 
-当前真实网络能力只有 Vite 下的 `/api/gifts`、`/api/invites`、`/api/relay` 预览中间件。登录与购买使用本机演示适配层。人物、对话和动态按本机身份分区，礼物和模拟订单也写在本机。首期按一个上线地区、一个优先发行渠道设计。现有 Android 包用于调试，发布构建及 App Store／Google Play 适配都需独立验收。付费商品、签约通道和模型服务待产品与资质验证后定。 [前端交互清单](./backend-interaction-inventory.md) · [应用入口](../frontend/src/main.tsx) · [账号数据](../frontend/src/App.tsx) · [登录演示](../frontend/src/auth/preview.ts) · [购买演示](../frontend/src/commerce/preview.ts) · [预览服务注册](../vite.config.ts) · [Android 构建配置](../mobile/android/app/build.gradle)
+Vite 下的 `/api/gifts`、`/api/invites`、`/api/relay` 是原型中间件，在 service 模式不注册。已接通领域通过 `/v1` 访问权威服务，原型模式及尚未接通的购买不能产生正式权益。当前文字模型使用开发名单内已配置的 OpenAI，真实资料／生产开放仍另行验收。首期按一个上线地区、一个优先发行渠道设计。现有 Android 包用于调试，发布构建及各商店适配都需独立验收；付费商品与签约通道尚待确认。 [前端交互清单](./backend-interaction-inventory.md) · [应用入口](../frontend/src/main.tsx) · [账号数据](../frontend/src/App.tsx) · [登录演示](../frontend/src/auth/preview.ts) · [购买演示](../frontend/src/commerce/preview.ts) · [预览服务注册](../vite.config.ts) · [Android 构建配置](../mobile/android/app/build.gradle)
 
-## 总体架构图
+## 服务边界
 
-![西界后端总体架构图](./backend-architecture.svg)
+**明确虚拟行动首片（2026-11-14，本机验收完成）。** 原世界页进入私聊后，明确要求当前人物立即执行的有限虚拟行动由Conversations中的`world-actions`模块拥有叙事事件权威，事件及其经历摘要与回复一次提交。People仍独占人物、住处和迁居，`worldVersion`不承载剧情次数；没有新增服务或数据库。事件记忆为明确`virtual/main`来源，不能写成旧Memories的用户现实事实，也不自动珍藏。人物朝用户挥手／说话时，用户是受众，不是第二执行者；多人协作、资产、迁居、现实行动和离线生活继续不在本片。独立授权及实际使用的事件谱系同时控制新生成和历史上下文，详情见[当前会话基线](./backend-api/conversations-memories.md)。
 
-业务代码使用一个 TypeScript 代码库。业务 API 和后台 Worker 是两个运行角色，模块在同一业务进程内协作。登录使用独立的开源身份服务，业务数据与身份数据使用不同数据库或权限隔离的库。API 负责鉴权、提交和查询，Worker 负责长任务及需要重试的外部调用。首期用 PostgreSQL 承载业务与任务队列。支付、语音和推送按所选发行渠道逐项接入。
+**人物记忆范围（2026-11-11 校准）。** 已实现的 K04 覆盖用户珍藏及候选，不是人物记忆系统的全部。人物记忆的目标还包括原始画像、全部获准聊天的自动长期记忆，以及虚拟世界正式事件和分支的连续记忆；无需以收藏触发。People、Conversations 与后续世界／剧情领域保留各自的来源权威，Memories 维护可追溯的整理与检索，生成端按人物、参与者、世界和时间线组装上下文。现实资料可以影响虚拟生活，虚拟事件可以影响后续互动；两类来源不能相互冒充。完整边界、分期与未实现项见[人物记忆整体目标](./backend-api/conversations-memories.md#人物记忆的整体目标2026-11-11-需求校准)。本次校准不新增运行服务或改变现有珍藏 API 的含义。
 
-跨端共用 `/v1`、事件与业务数据库。账号、人物、会话、回忆、订单和账本的 ID、权限及状态规则由后端统一维护。Android、iOS、鸿蒙和 Web 各自适配登录回跳、安全存储、推送、支付唤起和系统权限。服务端用应用发行配置与渠道适配器接这些差异。新增端复用已有接口与数据结构，并按本端验证接入能力。 [客户端提示与接口共用规则](./backend-api-contract.md#21-请求结果与分页)
+**实施进度（2026-11-12）。** 自动长期文字记忆首片已作为 Memories 领域的独立 Worker 接入，复用 PostgreSQL／pg-boss 和既有模型 SDK，没有把人物或消息数据权威搬到记忆库。People／Conversations Outbox 通过受控 HTTP 逐事件交付，Memories 在自己的数据库持久来源、收据、任务及派生条目；生成端按来源版本和当前授权使用并传播实际引用谱系。原 UI 的真实模型接续、更正／来源删除、导出及五库隔离恢复已验证。该用途须新政策明确授权，不沿用旧聊天许可；仍只在合成资料、本机开发名单内启用。世界正式事件、分支、主题级遗忘与生产门槛继续按后续切片验收。
+
+**R01 当前切片。** 原「所在世界 → 迁往」已接 People 的事务迁居；People 保管当前住处、独立世界版本及用户已提交的不可改迁居事实，Conversations 仅经内部 HTTP 读取虚拟主线快照并保存模型实际引用。迁居保留人物、直聊和珍藏身份；生成期间迁居及往返迁居阻断旧回复，历史页面继续保留原消息。正式迁居上下文与真实画像、自动长期文字记忆分开，不靠模型描述执行动作，也不新建剧情服务。独立新合成账号已通过原 UI 未授权 AI 迁居、刷新、往返和旧键重放，原聊天真实 OpenAI 正确接续当前／上一个住处，原隐私 OTP 导出通过。Social 现已接私人文字动态、手动互动、迁居投影及新 AI v3 授权下的珍藏回响／所属人物评论，后两项使用独立 Social Worker 和本域 pg-boss；Memories 仍是原文权威，通过逐事件 ack 和版本验证控制来源。原页面真实模型、修订／撤权／删除、五域数据权利与六库139表隔离恢复已验证。世界围坐现已接入同一 Conversations 会话域，新增独立回应许可、固定名单和每人回复槽，使用各自获准记忆及本人参加过的共享历史；原入口真实模型、未知回包重放、零居民历史、七域导出和八库175表隔离恢复已验证，首次暗号质量缺口与后续澄清结果分别保留，见[围坐记录](./backend-api/conversations-memories.md)。自动生活剧本和平行分支继续分片。完整契约见[迁居与文字聊天接续首片](./backend-api/conversations-memories.md#r01-迁居与文字聊天接续首片2026-11-12)及[珍藏回响与所属人物评论](./backend-api/conversations-memories.md#r01-珍藏回响与所属人物评论本轮实施基线)。
+
+项目在单个 Git 仓库内按领域维护独立服务。服务各自构建、启动、迁移和部署，拥有自己的数据库及写权限。域内用本地事务维护状态、幂等和数据约束。域间通过版本化 HTTP 接口或带去重的 Outbox 事件协作。API 和 Worker 可以是同一个领域服务的两个运行角色。
+
+当前独立服务为 Identity、People、Conversations、Memories、Social、Media 与 Gifts，各自拥有数据库及迁移；Logto 独立管理凭据与 OIDC。Social 拥有动态、互动及有序图片引用，通过受控接口读取已授权的珍藏／画像／世界上下文处理回响，不接管其他域的事实。Media 拥有私有图片、上传槽、成品、用途绑定及处理／清理任务，通过 S3 适配使用 SeaweedFS；仅独立授权的聊天单图可由当前视觉任务读取规范化字节交OpenAI，其他图片用途不授予模型处理。两个域以事务外 HTTP 幂等绑定协作，读图同时核对当前权限和 Social／People／Gifts／Conversations 各自的真实有效关联，不宣称跨库原子事务。统一入口仅路由公开 `/v1`，各资源服务自行鉴权。独立照片用途保持原文字和 AI 决定不变。Gifts 独占试用批次、追加账本、投递、真实回礼、来礼陈列、站内通知、独立旅途留影引用与可靠任务；扣减／回执／冲正在同一本库事务，真实聊天卡通过受控 HTTP 投影到 Conversations。当前配置下数据权利包括七域，恢复包括八库及实际对象字节，旧五／六／七库包不补造缺失数据。 [当前服务说明](../backend/README.md) · [早期规划图](./backend-architecture.svg)
+
+跨端共用 `/v1` 与事件契约。账号、人物、会话、回忆、订单和账本的 ID、权限及状态规则由后端统一维护。Android、iOS、鸿蒙和 Web 各自适配登录回跳、安全存储、推送、支付唤起和系统权限。服务端用应用发行配置与渠道适配器接这些差异。新增端复用已有接口与数据结构，并按本端验证接入能力。 [客户端提示与接口共用规则](./backend-api-contract.md#21-请求结果与分页)
 
 ## 开发语言与运行环境
 
@@ -24,11 +32,12 @@
 | Android 原生桥接 | **Java 21**，Capacitor 宿主与原生插件 | 已有 `MainActivity` 和系统窗口插件。新增工作集中在授权与支付回跳、推送、麦克风与相机权限等 SDK 连接。优先复用现成插件。 [Android 构建配置](../mobile/android/app/build.gradle) · [原生入口](../mobile/android/app/src/main/java/app/elysium/figma/dev/MainActivity.java) |
 | iOS 原生桥接 | **Swift**，按需接 Capacitor 插件、系统授权、StoreKit 和推送 | 为后续 iOS 发布的选型。当前项目包含 Android 宿主。 [Capacitor iOS 插件指南](https://capacitorjs.com/docs/plugins/ios) |
 | 登录和账号 | **TypeScript／Node.js** 写西界的账号映射、会话鉴权、绑定与切号联调 | 优先部署 **Logto OSS** 现成的 TypeScript／Node.js 身份服务，复用 SDK 和协议。第三方原生授权按平台走 Java／Swift 桥。 [Logto 源码](https://github.com/logto-io/logto) · [Capacitor 接入](https://docs.logto.io/quick-starts/capacitor-js) |
-| 业务 API、聊天、邀请与资产 | **TypeScript／Node.js**，NestJS，OpenAPI 描述接口 | 人物、会话、回忆、动态、礼物、邀请、订单和运营模块在同一后端代码库。 [NestJS 文档](https://docs.nestjs.com/) |
+| 业务 API、聊天、邀请与资产 | **TypeScript／Node.js**，NestJS，OpenAPI 描述接口 | 业务领域在同一仓库中按服务独立部署，服务拥有各自的依赖和数据迁移。 [NestJS 文档](https://docs.nestjs.com/) |
 | 数据、检索与迁移 | **SQL**，PostgreSQL | SQL 用于表结构、迁移、约束、事务和账号内检索。Node 业务代码通过数据库客户端读写。 |
-| 后台任务与 AI 文本 | **TypeScript／Node.js**，pg-boss 与 AI SDK Core | 同一代码库的独立 Worker 处理生成、回信、媒体调度、补单与推送。首期由 Node Worker 调用获准的模型服务。 [pg-boss](https://github.com/timgit/pg-boss) · [AI SDK](https://github.com/vercel/ai) |
+| 私有照片与图像处理 | **TypeScript／Node.js** 的 Media API／Worker，**SQL** 的状态与租约；调用 AWS SDK v3、Sharp，不自研图片编解码或对象存储 | SeaweedFS 4.53 提供私有 S3 字节存储，Sharp 处理方向、尺寸及发布成品。当前只接私人空间 JPEG／PNG／WebP，不含人物相册、聊天图片或 AI 看图。 |
+| 后台任务与 AI 文本 | **TypeScript／Node.js**，pg-boss 与 AI SDK Core | 所属领域的独立 Worker 处理生成、回信、媒体调度、补单与推送。首期由 Node Worker 调用获准的模型服务。 [pg-boss](https://github.com/timgit/pg-boss) · [AI SDK](https://github.com/vercel/ai) |
 | 支付订单、验单与退款 | **TypeScript／Node.js** 作为主语言。优先用支付宝、Apple、Stripe 的 Node SDK，Google Play 走官方服务端 API | 微信支付优先评估合适的收单接入。若确定直连且需要独立适配，使用 **Go** 官方库写薄适配，限定在渠道签名、请求和回调校验，订单及权益仍由 TypeScript 业务模块处理。 [支付宝 Node SDK](https://github.com/alipay/alipay-sdk-nodejs-all) · [Apple Node SDK](https://github.com/apple/app-store-server-library-node) · [Stripe Node SDK](https://github.com/stripe/stripe-node) · [Play 服务端 API](https://developer.android.com/google/play/billing/backend) · [微信支付 Go SDK](https://github.com/wechatpay-apiv3/wechatpay-go) |
-| 实时语音与视频 | 启用时优先用 **TypeScript／Node.js** 写语音 Agent，部署 **Go** 实现的 LiveKit Server | 先验证选定地区的转写、模型、合成插件和原生媒体桥。若关键插件或本地模型只适合 Python，再给独立 Agent 增加 **Python**。 [LiveKit Server](https://github.com/livekit/livekit) · [LiveKit Agents Node.js](https://github.com/livekit/agents-js) · [Python 与 Node.js 快速入门](https://docs.livekit.io/agents/start/voice-ai/) |
+| 实时语音与视频 | X01 首片为 **TypeScript／Node.js** 代理官方 OpenAI Realtime WebSocket；标准合成声音，无原声克隆、录音或逐字稿 | 本地协议和浏览器路径分别验证；提供方真实连接、真机音频路由及地区可达性仍须独立验收。多方 RTC、TURN 或实时视频未来可评估 LiveKit，当前未启用。 [LiveKit Server](https://github.com/livekit/livekit) · [LiveKit Agents Node.js](https://github.com/livekit/agents-js) · [Python 与 Node.js 快速入门](https://docs.livekit.io/agents/start/voice-ai/) |
 | 网关、对象存储与部署 | 网关和存储采用现成服务，部署使用 **YAML**、Caddyfile 等配置 | Caddy 和自托管候选 SeaweedFS 使用 Go 实现，按组件部署与维护。私有存储也可接同区托管。 [Caddy](https://github.com/caddyserver/caddy) · [SeaweedFS](https://github.com/seaweedfs/seaweedfs) |
 
 部署现成组件主要维护配置、升级和运行。当前 Android 构建与验包还使用 PowerShell 和 Python 脚本，归在开发工具链。 [构建脚本](../mobile/build-debug.ps1) · [验包脚本](../mobile/verify-apk.py)
@@ -42,11 +51,11 @@
 | 数据与任务 | PostgreSQL 和 pg-boss（MIT）。业务记录与需要可靠触发的任务同事务提交，依靠任务重试和业务幂等。首期检索在账号范围内做结构化过滤及文本匹配，中英样本达标后再启用所需索引。 [PostgreSQL 许可证](https://www.postgresql.org/about/licence/) · [pg-boss 事务入队](https://github.com/timgit/pg-boss) · [pg_trgm](https://www.postgresql.org/docs/current/pgtrgm.html) | 设计唯一键、事务和失效策略。模型、支付或推送的外部副作用要独立去重和补偿 |
 | 图片、音频和视频 | 以 S3 兼容 API 隔离对象存储。SeaweedFS（Apache-2.0）用于需要自托管的场景。正式环境优先比较同区托管对象存储的总运维成本，验证签名、分片、CORS 和删除后再选。 [SeaweedFS](https://github.com/seaweedfs/seaweedfs) · [S3 签名 URL](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html) | 素材入库、权属、访问与撤权、上传验证、格式检查及处理结果。数据库存媒体身份和权限，存储桶设为私有 |
 | AI 对话、书信与生成 | 采用开源 AI SDK Core，显式配置获准的区域模型提供方。REST 写入和查询，前台用 SSE 反馈，断线后按游标补读。对话、人物回忆、延时来信共用一个业务事实来源。 [AI SDK 源码](https://github.com/vercel/ai) · [生成与流式接口](https://ai-sdk.dev/docs/ai-sdk-core/generating-text) | 人物授权上下文、用户原文与 AI 生成的区分、消息状态、来源追踪、成本配额、任务取消与恢复。模型请求只带当前授权所需资料 |
-| 实时通话 | 有真实语音通话的交付需求时接 LiveKit Server＋Agents（Apache-2.0）。优先 Node.js Agent，复用 LiveKit SDK 与 WebRTC/TURN，后端签发单房间短时访问令牌。文本消息、同世界小聚和书信先复用前述会话模块。视频数字人另验证媒体生成与素材授权。 [LiveKit Server](https://github.com/livekit/livekit) · [LiveKit Agents](https://github.com/livekit/agents) · [部署与 TURN](https://docs.livekit.io/transport/self-hosting/deployment/) | 通话权限、模型会话、停止生成、留存与摘要。RTC 负责实时媒体传输。真人跨账号聊天属于待定能力，确认后再评估现成 IM |
-| 站内消息与推送 | 收件箱用同一业务数据库。按需要连接 APNs、FCM 或所选国内 Android 渠道支持的系统推送，端侧权限和系统展示交给原生 SDK。 [APNs](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns) · [FCM](https://firebase.google.com/docs/cloud-messaging) | 可读通知、已读、推送设备管理和去重。推送仅携带必要事件标识，打开后走鉴权查询 |
+| 实时通话 | 当前一对一 AI 通话由 Conversations 签发同源、10 秒一次性 WS grant，再服务端连接官方 Realtime。可信配置 ack、短 lease、独立当前用途及中央持久预算共同决定接通；默认 60 秒、上限 120 秒。LiveKit Server＋Agents（Apache-2.0）保留为未来多方 RTC 的备选，未部署。文本消息、同世界小聚和书信先复用前述会话模块。视频数字人另验证媒体生成与素材授权。 [LiveKit Server](https://github.com/livekit/livekit) · [LiveKit Agents](https://github.com/livekit/agents) · [部署与 TURN](https://docs.livekit.io/transport/self-hosting/deployment/) | 通话权限、模型会话、停止生成、留存与摘要。RTC 负责实时媒体传输。真人跨账号聊天属于待定能力，确认后再评估现成 IM |
+| 站内消息与推送 | 收件箱由所属服务写入，消费各域发布的事件。按需要连接 APNs、FCM 或所选国内 Android 渠道支持的系统推送，端侧权限和系统展示交给原生 SDK。 [APNs](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns) · [FCM](https://firebase.google.com/docs/cloud-messaging) | 可读通知、已读、推送设备管理和去重。推送仅携带必要事件标识，打开后走鉴权查询 |
 | 运维和观测 | 优先 Docker Compose 部署 API、Worker 和身份服务，数据库、备份及对象存储可托管。用 OpenTelemetry 接已有日志、指标和追踪工具。部署规格随实测并发、恢复目标与预算调整。 [OpenTelemetry](https://opentelemetry.io/docs/what-is-opentelemetry/) · [PostgreSQL 归档与恢复](https://www.postgresql.org/docs/current/continuous-archiving.html) | 告警覆盖支付差异、任务积压、模型错误和备份恢复。日志保留请求关联号、事件号和结果，避开私聊原文及凭据。服务密钥分环境，外部回调独立鉴权 |
 
-开源组件接入细化到 SDK 方法、平台接口、版本核对和验收条件。当前后端组件均处于选型或待接入阶段。 [开源项目接入与验收](./backend-api-contract.md#421-开源项目接口和西界的实现边界)
+开源组件接入细化到 SDK 方法、平台接口、版本核对和验收条件。Logto、NestJS、PostgreSQL、pg-boss 和文字模型 SDK 已接入本机主链；支付、媒体与实时能力仍按各自阶段验证，早期选型不等于已上线。 [开源项目接入与验收](./backend-api-contract.md#421-开源项目接口和西界的实现边界)
 
 ### 支付按发行渠道接入
 
@@ -67,9 +76,9 @@
 | --- | --- | --- |
 | 登录、切号、我页、协议及注销（A） | `sessions`、`accounts/me`、`identities`、`consents`、`deletion-requests`，认证流程走身份服务 | 正常、取消、拒绝和需重新验证均有可区分结果。切到 B 时人物、聊天、搜索、资产及媒体均隔离。原生与 Web 单独注册 OAuth 客户端，使用受支持的 Authorization Code + PKCE。支持注册的 App Store 版需提供应用内注销发起，Google Play 版还需提供网页入口。 [Apple 注销要求](https://developer.apple.com/support/offering-account-deletion-in-your-app/) · [Google Play 注销要求](https://support.google.com/googleplay/android-developer/answer/13327111) |
 | 寻找 TA、人物资料、迁居、素材与纪念日（B） | `person-drafts`、`persons`、`worlds`、`media`、`reminders` | 上传与提取状态可恢复，确认只创建一个人物。素材、生成候选、用户确认原文分开。迁居保留人物身份和历史消息，旧礼物按历史快照读回 |
-| 相见列表、私聊、小聚、书信、通话（C） | `conversations`、`messages`、`letters`、`generation-jobs`、`events`，二期 `call-sessions` | 发送有客户端操作 ID，消息与任务同事务。SSE 进度可丢后补读，最终消息以已存记录为准。延时回信在离开 App 后仍能处理 |
+| 相见列表、私聊、小聚、书信、通话（C） | `conversations`、`messages`、`letters`、`generation-jobs`、`events`，X01 `call-sessions` | 发送有客户端操作 ID，消息与任务同事务。SSE 进度可丢后补读，最终消息以已存记录为准。延时回信在离开 App 后仍能处理 |
 | 珍藏、星图、世界与动态（D） | `memories`、`search`、`feed`、`posts`、`reactions`、`comments` | 搜索结果可定位真实人物、消息或回忆 ID。已确认原文和回响关联但可独立恢复。原文与媒体撤权后同步收回可查询范围 |
-| 礼物、会话卡片、陈列、资产及收件箱（E） | `gift-catalog`、`gift-deliveries`、`wallet`、`ledger`、`notifications` | 余额扣减与寄件回执同事务，重复提交返回原结果。回礼、陈列和消息卡片引用同一投递对象，系统消息依据真实事件 |
+| 礼物、会话卡片、陈列、资产及收件箱（E） | `gift-catalog`、`gift-deliveries`、`received-gifts`、`wallet`、`ledger`、`notifications` | 扣减与寄件回执同事务；来礼有独立 received UUID，唯一引用原投递及真实生成任务，陈列和 incoming 卡片使用同一来礼来源。通知依据真实事件，已读与拆开分离 |
 | 邀请、共创、公开链接（F） | `referrals`、`shared-goals`、`contributions`、`public-links`，保留接力时才接 `relays` | 首次真实注册与首次合格记忆驱动发券。并发争最后一席只保留一次成功贡献。匿名访客只能读公开投影及获准贡献，链接支持撤回与过期 |
 | 商品、报价、下单、支付结果、订单与售后（G） | `products`、`quotes`、`orders`、`payment-attempts`、`refunds`、渠道回调 | 报价按渠道与地区返回。回到 App 查原订单。界面分别展示待支付、待确认、已支付待发放、已到账、关闭与退款状态。订单和权益跨设备可查 |
 

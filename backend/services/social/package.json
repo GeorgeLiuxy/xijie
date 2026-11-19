@@ -1,0 +1,38 @@
+{
+  "name": "@xijie/social",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.34.3",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "migrate": "node dist/migrate.js",
+    "start": "node dist/main.js",
+    "test": "node --test --test-concurrency=4 test/*.test.mjs",
+    "worker": "node dist/echo-worker.js",
+    "worker:albums": "node dist/albums-worker.js",
+    "review:album": "node dist/albums-review.js"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.0",
+    "@nestjs/core": "^11.1.0",
+    "@nestjs/platform-express": "^11.1.0",
+    "cookie": "^1.0.2",
+    "pg": "^8.16.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "pg-boss": "12.38.2",
+    "ai": "7.0.169",
+    "@ai-sdk/openai-compatible": "3.0.90",
+    "zod": "4.1.8"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.15.0",
+    "typescript": "5.9.3"
+  }
+}

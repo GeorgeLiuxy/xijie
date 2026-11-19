@@ -1,4 +1,7 @@
-import { WORLD_IDS, fmtDuration, isZh, type Lang, type WorldId, type useI18n } from './i18n'
+import { WORLD_IDS, fmtDuration, fmtTime, isZh, type Lang, type WorldId, type useI18n } from './i18n'
+import type { ConversationAnchor, ConversationHit } from './serviceConversationSearch'
+import type { ConversationSummary } from './serviceConversations'
+import type { WorldCard } from './servicePeople'
 import type { Chats, Msg, Person } from './model'
 import { exchanges } from './conversationHistory'
 
@@ -13,6 +16,47 @@ export type ConversationRow = {
   preview: string
   time?: string
   messageId?: number
+  anchor?: ConversationAnchor
+  conversationId?: string
+  worldId?: string
+}
+
+/** Service search only trusts API message hits. Summaries remain display text, never search evidence. */
+export function serviceConversationRows(people: Person[], chats: Chats, query: string, hits: ConversationHit[], t: Translate, lang: Lang, summaries: ConversationSummary[] = [], worlds: WorldCard[] = []): ConversationRow[] {
+  const needle = query.trim().toLocaleLowerCase(lang), zh = isZh(lang)
+  const byPerson = new Map(hits.filter(hit => hit.conversationKind !== 'gather').map(hit => [hit.personId, hit]))
+  const direct = conversationRows(people, chats, '', t, lang).filter(row => !!row.person).flatMap(row => {
+    const person = row.person!, hit = person.serverId ? byPerson.get(person.serverId) : undefined
+    if (!hit && ![person.name, person.realName, person.relation, t(`world.${person.world}`)].some(value => value?.toLocaleLowerCase(lang).includes(needle))) return []
+    const latest = exchanges(chats[row.key], person.greeting).at(-1)
+    return [{ row: hit ? { ...row, preview: (hit.author.kind === 'self' && hit.messageKind !== 'photo' ? (zh ? t('nav.me') + '：' : 'You: ') : '') + hit.excerpt,
+      time: fmtTime(lang, new Date(hit.createdAt)), anchor: { conversationId: hit.conversationId, messageId: hit.messageId } } : row,
+      activity: hit ? Date.parse(hit.lastActivityAt) : latest?.at ?? -1, id: person.serverId ?? String(person.id) }]
+  })
+  const byWorld = new Map(worlds.map(world => [world.id, world.code]))
+  const byConversation = new Map(hits.filter(hit => hit.conversationKind === 'gather').map(hit => [hit.conversationId, hit]))
+  const gather = summaries.filter(summary => summary.kind === 'gather').flatMap(summary => {
+    const world = summary.worldId ? byWorld.get(summary.worldId) : undefined
+    if (!world || !summary.conversationId) return []
+    const title = t('gather.title', { world: t(`world.${world}`) }), hit = byConversation.get(summary.conversationId)
+    if (needle && !hit && ![title, summary.title, t(`world.${world}`)].some(value => value.toLocaleLowerCase(lang).includes(needle))) return []
+    const author = hit?.author ?? summary.lastMessage?.author
+    const prefix = author?.kind === 'self' ? (zh ? t('nav.me') + '：' : 'You: ') : author?.kind === 'persona' ? author.displayName + (zh ? '：' : ': ') : ''
+    const at = hit?.createdAt ?? summary.lastMessage?.createdAt
+    return [{ row: { key: `g:${world}`, world, title, preview: prefix + (hit?.excerpt ?? summary.lastMessage?.preview ?? ''),
+      conversationId: summary.conversationId, worldId: summary.worldId!, ...(at ? { time: fmtTime(lang, new Date(at)) } : {}),
+      ...(hit ? { anchor: { conversationId: hit.conversationId, messageId: hit.messageId } } : {}) },
+      activity: Date.parse(hit?.lastActivityAt ?? summary.lastActivityAt ?? '') || -1, id: summary.conversationId }]
+  })
+  // A search may observe a newly created world conversation before the summary poll.
+  for (const hit of byConversation.values()) if (!summaries.some(summary => summary.conversationId === hit.conversationId)) {
+    const world = hit.worldId ? byWorld.get(hit.worldId) : undefined
+    if (!world) continue
+    const prefix = hit.author.kind === 'self' ? (zh ? t('nav.me') + '：' : 'You: ') : hit.author.displayName + (zh ? '：' : ': ')
+    gather.push({ row: { key: `g:${world}`, world, title: t('gather.title', { world: t(`world.${world}`) }), preview: prefix + hit.excerpt,
+      time: fmtTime(lang, new Date(hit.createdAt)), conversationId: hit.conversationId, worldId: hit.worldId!, anchor: { conversationId: hit.conversationId, messageId: hit.messageId } }, activity: Date.parse(hit.lastActivityAt), id: hit.conversationId })
+  }
+  return [...direct, ...gather].sort((a, b) => b.activity - a.activity || a.id.localeCompare(b.id)).map(item => item.row)
 }
 
 function visibleText(msg: Exchange, t: Translate) {

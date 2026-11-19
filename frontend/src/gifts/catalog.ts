@@ -29,6 +29,20 @@ export const giftCatalog: GiftDefinition[] = [
     audience: ["person", "pet", "object"], stackable: true, available: true, render: "keepsake",
   },
   {
+    id: "spark-wish-slip", version: 1, name: "星火心愿笺", en: "Starlight wish slip",
+    category: "emotion", icon: "notebook-pen", cost: 2, effect: "keepsake",
+    outcome: "把一纸祝愿收进礼物记录",
+    outcomeEn: "A wish on paper is kept in the gift records.",
+    audience: ["person"], stackable: false, available: true, render: "keepsake",
+  },
+  {
+    id: "blessing-river-lantern", version: 1, name: "祈福河灯", en: "River blessing lantern",
+    category: "emotion", icon: "lamp", cost: 5, effect: "prop",
+    outcome: "一盏暖灯留在 TA 的空间",
+    outcomeEn: "A warm lantern stays in their space.",
+    audience: ["person"], stackable: false, available: true, render: "lamp",
+  },
+  {
     id: "audio-capsule", version: 1, name: "录音胶囊", en: "Audio capsule",
     category: "emotion", icon: "audio-lines", cost: 5, effect: "keepsake",
     outcome: "录音上传功能筹备中，暂不扣除邮资。",

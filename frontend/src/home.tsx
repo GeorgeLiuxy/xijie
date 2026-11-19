@@ -6,14 +6,15 @@ import { WORLDS } from './worlds'
 import { DeepField, Lens, COSMOS } from './fx'
 import { I, NightCtx, haptic, useStatusTone } from './ui'
 import { AtlasSearch } from './atlas/AtlasSearch'
+import type { MemoryService } from './serviceMemories'
 import { AtlasCarousel, type AtlasSlot } from './atlas/AtlasCarousel'
 import './atlas/atlas-theme.css'
 
 export type Rect = { x: number; y: number; r: number }
 
 export type AtlasView = { world?: AtlasSlot; searchOpen?: boolean; query?: string; list?: boolean }
-export function Atlas({ people, view, onView, onWorld, onSeek, onOpen, onDiscoverSearch }: {
-  people: Person[]; view: AtlasView; onView: (next: AtlasView) => void
+export function Atlas({ people, view, onView, onWorld, onSeek, onOpen, onDiscoverSearch, memoryService }: {
+  people: Person[]; view: AtlasView; onView: (next: AtlasView) => void; memoryService?: MemoryService
   onWorld: (w: WorldId) => void; onSeek: (clue?: string) => void; onOpen: (id: number) => void
   onDiscoverSearch?: () => void
 }) {
@@ -113,7 +114,7 @@ export function Atlas({ people, view, onView, onWorld, onSeek, onOpen, onDiscove
         </div>
 
     </div>
-    {directoryOpen && <AtlasSearch people={people} currentWorld={cur} query={view.query ?? ''}
+    {directoryOpen && <AtlasSearch people={people} memoryService={memoryService} currentWorld={cur} query={view.query ?? ''}
       onQuery={query => onView({ ...view, world: cur, query })} onClose={closeDirectory}
       onWorld={world => go(slots.indexOf(world), true)} onOpen={onOpen} onSeek={onSeek} />}
   </div>

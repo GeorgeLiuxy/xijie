@@ -7,20 +7,21 @@ import { hasArrived, receiptMatchesPerson, targetMatchesPerson } from './store'
 import type { GiftOpenOptions } from './types'
 import './gift-messages.css'
 
-export function GiftProfile({ owner, person, onOpen }: {
+export function GiftProfile({ owner, person, onOpen, enabled = true }: {
   owner: string
   person: Person
+  enabled?: boolean
   onOpen: (options?: GiftOpenOptions) => void
 }) {
   const { lang } = useI18n()
   const zh = isZh(lang)
-  const state = useGiftState(owner)
+  const state = useGiftState(owner, enabled)
   const receipts = state.receipts.filter(receipt => receiptMatchesPerson(receipt, person))
   const received = (state.received ?? []).filter(gift => targetMatchesPerson(gift.from, person))
   const unopened = received.filter(gift => gift.openedAt == null).length
   const now = useArrivalClock(receipts)
   const latest = receipts[receipts.length - 1]
-  const pending = latest && !hasArrived(latest, now)
+  const pending = latest && latest.status !== 'delivery_failed' && !hasArrived(latest, now)
   const value = receipts.length || received.length
     ? (zh ? `送 ${receipts.length} · 收 ${received.length}` : `${receipts.length} sent · ${received.length} received`)
     : (zh ? '寄一份' : 'Send a gift')

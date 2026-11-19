@@ -1,0 +1,22 @@
+services:
+  gifts-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: xijie_gifts
+      POSTGRES_USER: xijie_gifts
+      POSTGRES_PASSWORD: ${XIJIE_GIFTS_DB_PASSWORD:?Set XIJIE_GIFTS_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U xijie_gifts -d xijie_gifts"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "127.0.0.1:5439:5432"
+    volumes:
+      - gifts-db:/var/lib/postgresql/data
+volumes:
+  gifts-db:
+networks:
+  default:
+    external: true
+    name: xijie-identity-dev_default

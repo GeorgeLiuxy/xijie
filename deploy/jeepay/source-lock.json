@@ -1,0 +1,46 @@
+{
+  "format": 1,
+  "protocol": "Jeepay open API 1.0 / MD5 / QR_CASHIER",
+  "backend": {
+    "repository": "https://github.com/jeequan/jeepay.git",
+    "commit": "e1ac9086d679826bab593f20431b7ecd292eb685",
+    "upstreamVersionFile": "v3.2.9_20260527",
+    "license": "LGPL-3.0",
+    "compose": "docker-compose.yml",
+    "readme": "docs/deploy/compose.md"
+  },
+  "ui": {
+    "repository": "https://github.com/jeequan/jeepay-ui.git",
+    "commit": "9c64a11719f2b5231256496dbbfa02d93fb8e16b",
+    "license": "LGPL-3.0",
+    "cashierDirectory": "jeepay-ui-cashier"
+  },
+  "deployment": {
+    "composeProject": "xijie-jeepay",
+    "localProjectPattern": "xijie-jeepay-<10hex>",
+    "verifiedProject": "xijie-jeepay-cfd1dbbebd",
+    "sourceSubdirectories": [
+      "jeepay",
+      "jeepay-ui"
+    ],
+    "apiProtocolVersion": "1.0",
+    "checkoutWayCode": "QR_CASHIER",
+    "checkoutDataTypes": [
+      "payurl"
+    ],
+    "imageDigestsPinned": true,
+    "fullStackBuildAndStartupVerified": true,
+    "merchantPaymentVerified": false,
+    "verificationDirectory": ".tmp/jeepay-local-cfd1dbbebd",
+    "verifiedArchitecture": "linux/amd64"
+  },
+  "images": {
+    "MAVEN_IMAGE": "maven@sha256:f58d59b6273e785ac0a4477f6e9b5ba1d7731c75b906c0f7b34076f1851318cc",
+    "MYSQL_IMAGE": "mysql@sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b",
+    "REDIS_IMAGE": "redis@sha256:90a6e70bbef8b9ca4aa4108bf2e24040bd68aa5c669a8bd568766c962a911f3d",
+    "ROCKETMQ_IMAGE": "apache/rocketmq@sha256:d2b231c1b9204129e4f4dd65ec1521c81b8d6826e5f1fe8daa521dab0db5bf16",
+    "JEEPAY_JRE_IMAGE": "eclipse-temurin@sha256:0b6521287f850ec1c4b31c9074c5a1ae1d67c5922c3fefd21065c7c32e244d4a",
+    "JEEPAY_NODE_IMAGE": "node@sha256:0e1754758c2df4cfa3e68d59e2e1b7374bb7fd9ea6328eaaacf15cc934af8202",
+    "JEEPAY_NGINX_IMAGE": "nginx@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236"
+  }
+}

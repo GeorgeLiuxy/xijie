@@ -1,0 +1,41 @@
+{
+  "format": 1,
+  "integration": "Self-hosted Hyperswitch v1 payments and payment links",
+  "backend": {
+    "repository": "https://github.com/juspay/hyperswitch.git",
+    "commit": "8e75ce7cce0b462b37d76601ac264a7f603674cc",
+    "license": "Apache-2.0",
+    "apiSpecification": "api-reference/v1/openapi_spec_v1.json",
+    "apiGeneration": "v1"
+  },
+  "webSdk": {
+    "repository": "https://github.com/juspay/hyperswitch-web.git",
+    "commit": "f6f83b9c565753dbef70d7f97e03125150e9a1d3",
+    "sharedCodeCommit": "8302158df08f849201f2752ae282b3309f8ba49a",
+    "license": "Apache-2.0"
+  },
+  "controlCenter": {
+    "repository": "https://github.com/juspay/hyperswitch-control-center.git",
+    "commit": "15d5522ecd602ad41ad28e05d6a93f8a197d05d2",
+    "license": "Apache-2.0"
+  },
+  "documentation": {
+    "repository": "https://github.com/juspay/hyperswitch-docs.git",
+    "commit": "6b4306d2f722da7dad938c8bf3bf4506fa75d689"
+  },
+  "verification": {
+    "sourceProtocolsReviewed": true,
+    "crossComponentBuildCompatibilityVerified": true,
+    "imagesPinnedToDigests": true,
+    "completeStackStarted": true,
+    "merchantPaymentVerified": false,
+    "walletDeviceVerified": false,
+    "controlCenterBuilt": false,
+    "syntheticUnconfirmedLinkVerified": true
+  },
+  "configurationService": {
+    "image": "ghcr.io/juspay/superposition-demo:0.113.0",
+    "digest": "sha256:51f3a310016879b7419ab64e6b6dbc81c739cdf5985f8f4cc19ba6f9384b2c6d",
+    "runtime": "private bundled PostgreSQL with independent password and persistent volume"
+  }
+}

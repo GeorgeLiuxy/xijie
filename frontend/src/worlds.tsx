@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { WorldId } from './i18n'
 
 /* ------------------------------------------------------------------ *
@@ -142,8 +143,15 @@ function IslesLaw({ still }: { still?: boolean }) {
   )
 }
 
-/* --------------------- 生成中：地平线上的世界信号 --------------------- */
+/* --------------------- 输入中：地平线上的世界信号 --------------------- */
 export function HorizonSignal({ world, label }: { world: WorldId; label: string }) {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const timer = window.setTimeout(() => setVisible(true), 550)
+    return () => window.clearTimeout(timer)
+  }, [])
+  if (!visible) return null
+
   return (
     <div className="flex items-center gap-2.5 animate-fade" role="status" aria-live="polite">
       {world === 'courtyard' && (
@@ -155,7 +163,7 @@ export function HorizonSignal({ world, label }: { world: WorldId; label: string 
       {world === 'isles' && (
         <span className="relative h-4 w-4"><span className="absolute inset-0 fx prism-spin" style={{ clipPath: 'polygon(50% 0, 100% 50%, 50% 100%, 0 50%)', background: 'linear-gradient(135deg, #fff, #c6b3ec, #9fd2cc)' }} /><span className="absolute -inset-2 rounded-full fx leaf-pulse" style={{ background: 'radial-gradient(circle, rgba(214,200,248,0.6), transparent 70%)' }} /></span>
       )}
-      <span className="font-mono text-[10.5px] tracking-[0.2em] uppercase text-ink-soft">{label}</span>
+      <span className="text-[12px] text-ink-soft">{label}</span>
     </div>
   )
 }

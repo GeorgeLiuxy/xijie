@@ -105,7 +105,15 @@
   line-height: 1.45;
 }
 .auth-feedback--error { color: var(--auth-danger); }
-.auth-code[data-invalid=true] .auth-surface[data-filled=true] {
+.auth-inline-error {
+  color: var(--auth-danger);
+  font-size: .8125rem;
+  line-height: 1.45;
+}
+.auth-phone-row[data-invalid=true] .auth-field-active { background: var(--auth-danger); }
+.auth-agreement[data-invalid=true] .auth-agree-mark { border-color: var(--auth-danger); }
+.auth-code[data-invalid=true]:focus-within { outline-color: var(--auth-danger); }
+.auth-code[data-invalid=true] .auth-surface {
   box-shadow: inset 0 0 0 1px var(--auth-danger);
 }
 .auth-provider-note {
@@ -123,5 +131,6 @@
   border-bottom: 1px solid var(--auth-line);
 }
 .auth-provider-row > span { flex: 1; }
+.auth-provider-row:disabled { cursor: default; color: var(--auth-muted); }
 .auth-provider-confirm .auth-feedback { margin-bottom: .75rem; }
 .auth-provider-confirm [aria-pressed] { margin-bottom: .5rem; }

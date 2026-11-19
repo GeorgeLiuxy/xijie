@@ -2,10 +2,15 @@ import { useContext, useEffect, useRef, useState } from 'react'
 import { ArrowUpRight, BookOpenText, Eye, Pause, Play, SpeakerHigh, SpeakerSlash, UsersThree } from '@phosphor-icons/react'
 import { isZh, useI18n, type WorldId } from '../i18n'
 import type { Memory, Person } from '../model'
+import type { MemoryService } from '../serviceMemories'
 import { Lens } from '../fx'
-import { I, NightCtx, Sheet, haptic, useStatusTone } from '../ui'
+import { I, NightCtx, Sheet, Toast, haptic, useStatusTone } from '../ui'
 import { useNativeBack } from '../mobile/back'
 import { useWorldMedia } from './useWorldMedia'
+import { ResidenceGift } from '../gifts/ResidenceGift'
+import {StoryControls} from './StoryControls'
+import type {ReferralContext} from '../serviceReferrals'
+import type {StoryBranch} from '../serviceStoryControls'
 import tideFar from '../study/assets/tide/landfall.webp'
 import tideNear from '../study/assets/tide/threshold-close.webp'
 import islesFar from '../study/assets/isles/landfall.webp'
@@ -38,11 +43,16 @@ export type WorldViewProps = {
   world: WorldId; people: Person[]; calm?: boolean
   view?: WorldPlaceView; onView: (view: WorldPlaceView) => void
   onBack: () => void; onOpen: (id: number) => void
-  onTalk: (id: number, memoryId?: number) => void; onGather: () => void; onSeek: () => void
+  onTalk?: (id: number, memoryId?: number) => void; onGather?: () => void; onSeek: () => void
+  memoryService?: MemoryService
+  serviceContext?:ReferralContext
+  onStory?:(personId:number,branch?:StoryBranch)=>void
+  giftOwner?: string
+  onGiftReceipt?: (personId: number, receiptId: string) => void
 }
 
 /** The route owns the selected person, viewpoint and memory so a conversation can return here. */
-export function WorldView({ world, people, calm = false, view, onView, onBack, onOpen, onTalk, onGather, onSeek }: WorldViewProps) {
+export function WorldView({ world, people, calm = false, view, onView, onBack, onOpen, onTalk, onGather, onSeek, memoryService,serviceContext,onStory,giftOwner,onGiftReceipt }: WorldViewProps) {
   const { t, lang } = useI18n()
   const zh = isZh(lang)
   const night = useContext(NightCtx)
@@ -51,12 +61,35 @@ export function WorldView({ world, people, calm = false, view, onView, onBack, o
   const residents = people.filter(person => person.world === world)
   const active = residents.find(person => person.id === view?.personId) ?? residents[0]
   const memories = residents.flatMap(person => person.memories.map(memory => ({ person, memory })))
-  const memory = active?.memories.find(item => item.id === view?.memoryId)
+  const selectedMemory = active?.memories.find(item => item.id === view?.memoryId)
+  const [verifiedMemory, setVerifiedMemory] = useState<{ key: string; service: MemoryService; value: Memory } | null>(null)
+  const memoryKey = JSON.stringify([active?.serverId, selectedMemory?.serverId, selectedMemory?.serverVersion])
+  const viewChanged = useRef(onView); viewChanged.current = onView
+  const memory = memoryService && selectedMemory?.serverId ? verifiedMemory?.service === memoryService && verifiedMemory?.key === memoryKey ? verifiedMemory.value : undefined : selectedMemory
+  useEffect(() => {
+    if (!memoryService || !active?.serverId || !selectedMemory?.serverId) return
+    let live = true
+    void memoryService.read(active.serverId, selectedMemory).then(result => {
+      if (!live) return
+      if (result) setVerifiedMemory({ key: memoryKey, service: memoryService, value: result })
+      else viewChanged.current({ ...view, memoryId: undefined })
+    })
+    return () => { live = false }
+  }, [memoryService, active?.serverId, selectedMemory?.serverId, selectedMemory?.serverVersion, memoryKey])
   const near = (view?.near ?? false) || !!memory
   const quiet = view?.quiet ?? false
-  const [sheet, setSheet] = useState<'people' | 'memories' | 'about' | null>(null)
+  const [sheet, setSheet] = useState<'people' | 'memories' | 'about' | 'story' | null>(null)
   const [failed, setFailed] = useState<Record<string, boolean>>({})
+  const [unavailableText, setUnavailableText] = useState('')
   const [cupPoint, setCupPoint] = useState({ x: '49%', y: '66%' })
+  useEffect(() => {
+    if (!unavailableText) return
+    const timer = window.setTimeout(() => setUnavailableText(''), 2500)
+    return () => clearTimeout(timer)
+  }, [unavailableText])
+  const unavailable = () => setUnavailableText(zh ? '这项功能暂时无法使用，请稍后再试。' : 'This feature is unavailable right now. Please try again later.')
+  const talk = (id: number, memoryId?: number) => onTalk ? onTalk(id, memoryId) : unavailable()
+  const gather = () => onGather ? onGather() : unavailable()
   const root = useRef<HTMLDivElement>(null)
   const backButton = useRef<HTMLButtonElement>(null)
   const sheetOpener = useRef<HTMLElement | null>(null)
@@ -144,8 +177,9 @@ export function WorldView({ world, people, calm = false, view, onView, onBack, o
         <section className={`visit-content visit-near ${near && !memory ? 'is-current' : ''}`} inert={!near || !!memory} aria-hidden={!near || !!memory}>
           {active ? <>
             <p className="visit-person-line"><span>{active.name}</span><small>{zh ? '同在这个世界' : 'In this world'}</small></p>
-            <button className="visit-text-action" onClick={() => onTalk(active.id)}>{zh ? '和你说说话' : 'Talk for a while'}<ArrowUpRight size={18} /></button>
+            <button className="visit-text-action" onClick={() => talk(active.id)}>{zh ? '和你说说话' : 'Talk for a while'}<ArrowUpRight size={18} /></button>
             {firstMemory && <button className="visit-small-memory" onClick={() => openMemory(active, firstMemory)}><BookOpenText size={15} />{zh ? '翻一页往事' : 'Open a memory'}</button>}
+            {near && !quiet && !memory && giftOwner && onGiftReceipt && <ResidenceGift owner={giftOwner} person={active} onOpen={receiptId => onGiftReceipt(active.id, receiptId)} />}
           </> : <>
             <p className="visit-empty-line">{zh ? '可以先在这里坐坐。' : 'You can stay here for a while.'}</p>
             <button className="visit-text-action" onClick={onSeek}>{t('atlas.seek')}<ArrowUpRight size={18} /></button>
@@ -158,7 +192,7 @@ export function WorldView({ world, people, calm = false, view, onView, onBack, o
             <h2>{memory.title}</h2>
             <div className="visit-memory-body scroll-quiet" key={`${active.id}-${memory.id}`} role="region" aria-label={zh ? '回忆原文' : 'Memory text'} tabIndex={0}><p>{memory.body}</p></div>
             <div className="visit-memory-actions">
-              <button className="visit-text-action" onClick={() => onTalk(active.id, memory.id)}>{zh ? '聊聊这一页' : 'Talk about this page'}<ArrowUpRight size={18} /></button>
+              <button className="visit-text-action" onClick={() => talk(active.id, memory.id)}>{zh ? '聊聊这一页' : 'Talk about this page'}<ArrowUpRight size={18} /></button>
               {active.memories.length > 1 && <div className="visit-memory-pages" aria-label={zh ? '翻阅回忆' : 'Browse memories'}>
                 <button aria-label={zh ? '上一页回忆' : 'Previous memory'} disabled={memoryIndex <= 0} onClick={() => openMemory(active, active.memories[memoryIndex - 1])}><I.Back className="h-4 w-4" /></button>
                 <span>{memoryIndex + 1}/{active.memories.length}</span>
@@ -176,6 +210,7 @@ export function WorldView({ world, people, calm = false, view, onView, onBack, o
             <span>{active?.name || t('world.together')}</span>{residents.length > 1 && <small>+{residents.length - 1}</small>}
           </button>
           <button className="visit-icon" onClick={() => openSheet('memories')} aria-label={zh ? '查看这里的全部回忆' : 'All memories here'}><BookOpenText size={19} /></button>
+          {serviceContext&&active?.serverId&&<button className="visit-icon" onClick={()=>openSheet('story')} aria-label={zh?'故事线与离线生活':'Storylines and offline life'}><I.Story className="h-5 w-5"/></button>}
         </div>
         {source && <button className="visit-sound" aria-pressed={media.audioOn} onClick={media.toggleAudio}>
           {media.audioOn ? <SpeakerHigh size={17} /> : <SpeakerSlash size={17} />}<span>{media.audioFailed ? (zh ? '重试声音' : 'Retry sound') : media.audioOn ? (zh ? '声音已开' : 'Sound on') : (zh ? '听听这里' : 'Listen here')}</span>
@@ -184,7 +219,8 @@ export function WorldView({ world, people, calm = false, view, onView, onBack, o
       {(sceneFailed || media.videoFailed || media.audioFailed) && <p className="visit-media-note" role="status">{media.audioFailed ? (zh ? '声音暂未加载，仍可继续漫游。' : 'Sound is unavailable. You can keep exploring.') : sceneFailed ? (zh ? '风景暂未加载，仍可相见和翻看回忆。' : 'Scenery is unavailable. People and memories are still here.') : (zh ? '动态暂未加载，已保留静态风景。' : 'Showing the still scenery for now.')}</p>}
     </div>
 
-    {sheet && <Sheet dark onClose={closeSheet} title={sheet === 'people' ? t('world.together') : sheet === 'memories' ? (zh ? '留在这里的回忆' : 'Memories kept here') : t(`world.${world}`)}>
+    {sheet && <Sheet dark onClose={closeSheet} title={sheet === 'story' ? (zh?'故事线与离线生活':'Storylines and offline life') : sheet === 'people' ? t('world.together') : sheet === 'memories' ? (zh ? '留在这里的回忆' : 'Memories kept here') : t(`world.${world}`)}>
+      {sheet==='story'&&serviceContext&&active?.serverId&&<StoryControls key={active.serverId} context={{...serviceContext,personId:active.serverId}} name={active.name} onOpen={branch=>{closeSheet();onStory?.(active.id,branch)}}/>}
       {sheet === 'about' && <div className="visit-about"><p>{t(`world.${world}.law`)}</p><p>{t(`world.${world}.lore`)}</p><button className="visit-text-action" onClick={() => { closeSheet(); enter() }}>{word(place.invitation)}<ArrowUpRight size={18} /></button></div>}
       {sheet === 'people' && <div className="visit-people">
         {!residents.length && <div className="visit-sheet-empty"><p>{zh ? '这里还没有你认识的人。带着一段记忆，去寻找 TA。' : 'No one you know is here yet. Start with a memory.'}</p><button className="visit-text-action" onClick={onSeek}>{t('atlas.seek')}<ArrowUpRight size={18} /></button></div>}
@@ -192,12 +228,13 @@ export function WorldView({ world, people, calm = false, view, onView, onBack, o
           <button className="visit-resident-select" aria-pressed={active?.id === person.id} onClick={() => selectPerson(person.id)}><Lens world={world} avatar={person.avatar} name={person.name} size={40} dark /><span><strong>{person.name}</strong><small>{person.relation}</small></span>{active?.id === person.id && <I.Check className="h-4 w-4" />}</button>
           <button className="visit-icon" onClick={() => onOpen(person.id)} aria-label={zh ? `查看${person.name}的资料` : `View ${person.name}'s profile`}><I.More className="h-5 w-5" /></button>
         </div>)}
-        {residents.length > 1 && <button className="visit-gather" onClick={onGather}><I.Gather className="h-5 w-5" />{t('world.gather')}<ArrowUpRight size={18} /></button>}
+        {residents.length > 1 && <button className="visit-gather" onClick={gather}><I.Gather className="h-5 w-5" />{t('world.gather')}<ArrowUpRight size={18} /></button>}
       </div>}
       {sheet === 'memories' && <div className="visit-memory-index">
-        {!memories.length && <div className="visit-sheet-empty"><p>{zh ? '这里还没有珍藏的回忆。可以先去说说话。' : 'No memories saved here yet. Start with a conversation.'}</p><button className="visit-text-action" onClick={() => active ? onTalk(active.id) : onSeek()}>{active ? (zh ? '去说说话' : 'Start a conversation') : t('atlas.seek')}<ArrowUpRight size={18} /></button></div>}
+        {!memories.length && <div className="visit-sheet-empty"><p>{zh ? '这里还没有珍藏的回忆。可以先去说说话。' : 'No memories saved here yet. Start with a conversation.'}</p><button className="visit-text-action" onClick={() => active ? talk(active.id) : onSeek()}>{active ? (zh ? '去说说话' : 'Start a conversation') : t('atlas.seek')}<ArrowUpRight size={18} /></button></div>}
         {memories.map(({ person, memory: item }) => <button className="visit-memory-row" key={`${person.id}-${item.id}`} onClick={() => openMemory(person, item)}><span><small>{person.name}</small><strong>{item.title}</strong><p>{item.body}</p></span><I.Chevron className="h-4 w-4" /></button>)}
       </div>}
     </Sheet>}
+    {unavailableText && <Toast text={unavailableText} dark={night} />}
   </div>
 }

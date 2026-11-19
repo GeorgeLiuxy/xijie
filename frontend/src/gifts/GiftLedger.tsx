@@ -1,18 +1,25 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { useGiftService } from './giftServiceContext'
 import { isZh, useI18n } from '../i18n'
 import { I } from '../ui'
 import { getGiftGoal } from './client'
 import { getGiftState, subscribeGifts } from './store'
-import type { GiftGoal, GiftGoalLink, GiftReceipt } from './types'
+import type { GiftGoal, GiftGoalLink, GiftReceipt, GiftState } from './types'
 
-export function useGiftState(owner: string) {
-  const subscribe = useCallback((fn: () => void) => subscribeGifts(owner, fn), [owner])
-  return useSyncExternalStore(subscribe, () => getGiftState(owner))
+const unavailableLedger: GiftState = { version: 1, credits: 0, inventory: {}, entitlements: {}, receipts: [], usedRewards: [] }
+const ignoreSubscription = () => {}
+
+export function useGiftState(owner: string, enabled = true) {
+  const service = useGiftService()
+  const localEnabled = enabled && !service
+  const subscribe = useCallback((fn: () => void) => localEnabled ? subscribeGifts(owner, fn) : ignoreSubscription, [owner, localEnabled])
+  const local = useSyncExternalStore(subscribe, () => localEnabled ? getGiftState(owner) : unavailableLedger)
+  return service?.state ?? local
 }
 
 export function useArrivalClock(receipts: GiftReceipt[]) {
   const [now, setNow] = useState(Date.now)
-  const next = receipts.reduce((soonest, receipt) => receipt.arriveAt > now ? Math.min(soonest, receipt.arriveAt) : soonest, Infinity)
+  const next = receipts.reduce((soonest, receipt) => !receipt.status && receipt.arriveAt > now ? Math.min(soonest, receipt.arriveAt) : soonest, Infinity)
   useEffect(() => {
     if (!Number.isFinite(next)) return
     const timer = window.setTimeout(() => setNow(Date.now()), Math.max(0, next - Date.now()) + 10)

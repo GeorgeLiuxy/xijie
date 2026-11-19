@@ -8,6 +8,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(WindowSurfacePlugin.class);
+        registerPlugin(NativeAuthPlugin.class);
+        registerPlugin(DataExportPlugin.class);
+        registerPlugin(ChatCapturePlugin.class);
         super.onCreate(savedInstanceState);
         // Android's IME handling retains priority; this only handles app-level back.
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {

@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeftIcon, ArrowUpRightIcon, BackpackIcon, CheckCircleIcon,
   CircleNotchIcon, GiftIcon as PresentIcon, HouseSimpleIcon,
@@ -9,11 +9,13 @@ import { isZh, useI18n } from '../i18n'
 import { WORLDS } from '../worlds'
 import { NightCtx, chime, haptic, useStatusTone } from '../ui'
 import { categoryLabels, getGift, giftCatalog } from './catalog'
-import { acceptsPostage, getGiftState, hasArrived, receiptMatchesPerson, sendGift, subscribeGifts, targetMatchesPerson } from './store'
+import { acceptsPostage, hasArrived, receiptMatchesPerson, sendGift, targetMatchesPerson } from './store'
 import type { GiftCategory, GiftDefinition, GiftReceipt, GiftSendInput, GiftTarget, GoalKind } from './types'
 import { GiftIcon } from './GiftIcon'
 import { giftPlacementLabel } from './PersonalGiftScene'
 import { getGiftDraft, useGiftDraft } from './giftDraft'
+import { useGiftState } from './GiftLedger'
+import { giftServiceMessage, useGiftService } from './giftServiceContext'
 import { useNativeBack } from '../mobile/back'
 import './gifts.css'
 import './gift-messages.css'
@@ -23,6 +25,7 @@ type Filter = 'all' | 'free' | 'owned'
 type Category = 'recommended' | 'all' | GiftCategory
 
 export type GiftStudioProps = {
+  serviceGoals?:import('./types').GiftGoalLink[]
   owner: string
   target: GiftTarget
   onClose: () => void
@@ -33,6 +36,7 @@ export type GiftStudioProps = {
   onGoal: (kind: GoalKind) => void
   onOpenGoal?: (id: string) => void
   onWatch: (receipt: GiftReceipt) => void
+  watchBusy?: boolean
   onReceived?: (id: string) => void
   initialTab?: StudioTab
   initialGift?: string
@@ -48,18 +52,22 @@ export type GiftStudioProps = {
 
 const makeId = () => crypto.randomUUID()
 const categories: GiftCategory[] = ['emotion', 'care', 'pet', 'home', 'collection', 'scenery', 'experience', 'journey']
-const browseCatalog = giftCatalog.filter(item => item.effect !== 'fuel')
 
-export function GiftStudio({ owner, target, onClose, onVisitSpace, onBackToChat, onInvite, onPurchase, onGoal, onOpenGoal, onWatch, onReceived, initialTab = 'catalog', initialGift, initialSource, initialReceipt, onReceipt, compact = false, inContext = false, onExpand, onBusyChange, large = false }: GiftStudioProps) {
+
+export function GiftStudio({ owner, target, onClose, onVisitSpace, onBackToChat, onInvite, onPurchase, onGoal, onOpenGoal, onWatch, watchBusy = false, onReceived, initialTab = 'catalog', initialGift, initialSource, initialReceipt, onReceipt, compact = false, inContext = false, onExpand, onBusyChange, large = false,serviceGoals }: GiftStudioProps) {
   const { lang, t } = useI18n()
   const zh = isZh(lang)
   const text = (cn: string, en: string) => zh ? cn : en
   useStatusTone(useContext(NightCtx) ? 'light' : 'dark')
-  const subscribe = useCallback((listener: () => void) => subscribeGifts(owner, listener), [owner])
-  const snapshot = useCallback(() => getGiftState(owner), [owner])
-  const state = useSyncExternalStore(subscribe, snapshot, snapshot)
+  const service = useGiftService()
+  const state = useGiftState(owner)
+  const pendingIntent = service?.pending(target.identity)
+  const browseCatalog = useMemo(() => (service ? service.catalog : giftCatalog).filter(item => item.effect !== 'fuel'), [service?.catalog])
   const [draft, updateDraft, clearDraft] = useGiftDraft(owner, target)
-  const { giftId: selectedId, quantity, note, source: preferred } = draft
+  const selectedId = pendingIntent?.body.giftId ?? draft.giftId
+  const quantity = pendingIntent?.body.quantity ?? draft.quantity
+  const note = pendingIntent?.body.note ?? draft.note
+  const preferred = pendingIntent ? pendingIntent.body.source === 'voucher' ? 'reward' : pendingIntent.body.source : draft.source
   const [tab, setTab] = useState<StudioTab>(initialTab)
   const [category, setCategory] = useState<Category>(() => getGift((!initialReceipt && initialGift) || selectedId || '')?.category ?? 'recommended')
   const [filter, setFilter] = useState<Filter>('all')
@@ -83,7 +91,7 @@ export function GiftStudio({ owner, target, onClose, onVisitSpace, onBackToChat,
   }, [initialGift, initialSource, initialReceipt, updateDraft])
 
   const items = useMemo(() => {
-    const directGift = getGift((!initialReceipt && initialGift) || selectedId || '')
+    const directGift = service ? browseCatalog.find(item => item.id === ((!initialReceipt && initialGift) || selectedId)) : getGift((!initialReceipt && initialGift) || selectedId || '')
     // Legacy flight links can still open their explicit supply; normal browsing hides fuel.
     let result = directGift?.effect === 'fuel' ? [...browseCatalog, directGift] : browseCatalog
     // Compact browsing only limits the display below. Its selected draft still resolves
@@ -102,9 +110,9 @@ export function GiftStudio({ owner, target, onClose, onVisitSpace, onBackToChat,
     if (filter === 'free') result = result.filter(item => item.available && item.cost === 0)
     if (filter === 'owned') result = result.filter(item => (state.inventory[item.id] ?? 0) > 0)
     return result
-  }, [query, category, filter, target.audience, state.inventory, initialGift, initialReceipt, selectedId, compact])
+  }, [query, category, filter, target.audience, state.inventory, initialGift, initialReceipt, selectedId, compact, browseCatalog])
   // The submit action and its summary always refer to a visible, explicit choice.
-  const gift = items.find(item => item.id === selectedId)
+  const gift = pendingIntent?.definition ?? items.find(item => item.id === selectedId)
   const compactConfirm = compact && compactStep === 'confirm' && !!gift
   const displayItems = useMemo(() => {
     if (!compact) return items
@@ -120,7 +128,7 @@ export function GiftStudio({ owner, target, onClose, onVisitSpace, onBackToChat,
     return visible
   }, [compact, items, compactSource, state.inventory, target.audience, gift])
   useEffect(() => {
-    if (selectedId && !gift && !busy && getGiftDraft(owner, target).giftId === selectedId) updateDraft({ giftId: null, quantity: 1 })
+    if (selectedId && !gift && !busy && !service && getGiftDraft(owner, target).giftId === selectedId) updateDraft({ giftId: null, quantity: 1 })
   }, [selectedId, gift, busy, owner, target, updateDraft])
   const nameOf = (item: GiftDefinition) => zh ? item.name : item.en
   const outcomeOf = (item: GiftDefinition) => {
@@ -133,8 +141,11 @@ export function GiftStudio({ owner, target, onClose, onVisitSpace, onBackToChat,
   const worldName = t(`world.${target.world}`)
   const stock = gift ? state.inventory[gift.id] ?? 0 : 0
   const returnPostage = state.entitlements['return-stamp'] ?? 0
-  const canUseReturn = !!gift && acceptsPostage(gift) && quantity === 1 && returnPostage > 0
-  const source: GiftSendInput['source'] = gift?.cost === 0 && preferred !== 'inventory' ? 'trial'
+  const balanceReady = !service || service.status === 'ready'
+  const postageLabel = balanceReady ? state.credits : '—', voucherLabel = balanceReady ? returnPostage : '—'
+  const eligibleVoucher = (item: GiftDefinition) => service ? service.catalog.some(value => value.id === item.id && value.acceptsVoucher && (!value.availableSources || value.availableSources.includes('voucher'))) : acceptsPostage(item)
+  const canUseReturn = !!gift && eligibleVoucher(gift) && quantity === 1 && returnPostage > 0
+  const source: GiftSendInput['source'] = pendingIntent ? pendingIntent.body.source === 'voucher' ? 'reward' : pendingIntent.body.source : gift?.cost === 0 && preferred !== 'inventory' ? 'trial'
     : preferred === 'reward' && canUseReturn ? 'reward'
     : preferred === 'trial' ? 'trial'
     : preferred === 'inventory' && stock > 0 ? 'inventory'
@@ -152,9 +163,9 @@ export function GiftStudio({ owner, target, onClose, onVisitSpace, onBackToChat,
   const recipient = { id: target.id, localId: target.identity }
   const receipts = state.receipts.filter(receipt => receiptMatchesPerson(receipt, recipient))
   const received = (state.received ?? []).filter(item => targetMatchesPerson(item.from, recipient)).slice().reverse()
-  const ownGoals = (state.goals ?? []).filter(link => targetMatchesPerson(link.target, recipient))
+  const ownGoals = (serviceGoals??state.goals ?? []).filter(link => targetMatchesPerson(link.target, recipient))
   const confirmed = confirmedId ? receipts.find(receipt => receipt.id === confirmedId) : undefined
-  const pending = state.receipts.some(receipt => !hasArrived(receipt, now))
+  const pending = !service && state.receipts.some(receipt => !hasArrived(receipt, now))
 
   useLayoutEffect(() => {
     if (compact && !wasCompact.current) {
@@ -200,7 +211,7 @@ export function GiftStudio({ owner, target, onClose, onVisitSpace, onBackToChat,
   }, [pending])
 
   function choose(item: GiftDefinition, fromBag = false) {
-    if (lock.current) return
+    if (lock.current || pendingIntent) return
     updateDraft({ giftId: item.id, quantity: 1, ...(fromBag ? { source: 'inventory' as const } : {}) })
     setError('')
     if (compact) setCompactStep('confirm')
@@ -215,7 +226,7 @@ export function GiftStudio({ owner, target, onClose, onVisitSpace, onBackToChat,
   }
 
   async function submit() {
-    if (lock.current || !gift?.available) return
+    if (lock.current || !gift || !pendingIntent && !gift.available) return
     if (goalGift) { onGoal(gift.effect === 'fuel' ? 'flight' : 'home'); return }
     const input = { target, giftId: gift.id, quantity, note: note.trim(), source }
     const fingerprint = JSON.stringify(input)
@@ -225,24 +236,35 @@ export function GiftStudio({ owner, target, onClose, onVisitSpace, onBackToChat,
     setBusy(true)
     setError('')
     try {
-      const receipt = await sendGift(owner, { ...input, requestId: request.id })
+      const receipt = service ? await service.send({ ...input, requestId: request.id }) : await sendGift(owner, { ...input, requestId: request.id })
       setConfirmedId(receipt.id)
       setNow(Date.now())
-      haptic([9, 35, 15])
-      chime('connect')
+      if (receipt.status !== 'delivery_failed') {
+        haptic([9, 35, 15])
+        chime('connect')
+      }
       clearDraft(request.id)
       onReceipt?.(receipt)
     } catch (failure) {
+      if (failure instanceof DOMException && failure.name === 'AbortError') return
       const code = failure instanceof Error ? failure.message : ''
       const messages: Record<string, [string, string]> = {
+        'INSUFFICIENT_ASSET': source === 'inventory' ? ['背包里的这件礼物数量不够，请减少数量或改用邮资。', 'There are not enough of this gift in your bag. Reduce the quantity or use postage.'] : source === 'reward' ? ['可用赠礼券不足，可改用邮资或背包里的礼物。', 'You do not have enough vouchers. Use postage or a gift from your bag.'] : ['邮资不够，请减少数量或选择其他礼物。', 'Not enough postage. Reduce the quantity or choose another gift.'],
+        'CATALOG_VERSION_CHANGED': ['礼物信息刚刚更新。请重新选一次礼物，再寄出。', 'The gift details have changed. Select the gift again before sending.'],
+        'GIFT_STORAGE_PERMISSION_REQUIRED': ['请到「我」里的「隐私与 AI 说明」同意说明，再回来寄出。你的选择会保留。', 'Agree to the statement in Me → Privacy & AI, then return to send. Your selection is kept.'],
+        'AUTHORIZATION_CHANGED': ['请到「我」里的「隐私与 AI 说明」查看更新的说明，再回来继续。你的选择会保留。', 'Review the updated statement in Me → Privacy & AI, then return to continue. Your selection is kept.'],
+        'GIFT_UNAVAILABLE': ['这份礼物暂未开放，可以先挑另一件。', 'This gift is not available yet. Choose another for now.'],
+        'VOUCHER_NOT_APPLICABLE': ['这件礼物不能用基础赠礼券，可选择其他礼物或改用邮资。', 'This gift does not accept a basic voucher. Choose another gift or use postage.'],
+        'GIFT_PERMISSION_REQUIRED': ['请到「我」里的「隐私与 AI 说明」同意说明，再回来寄出。你的选择会保留。', 'Agree to the statement in Me → Privacy & AI, then return to send. Your selection is kept.'],
+        'FORBIDDEN': ['当前账号暂时无法寄送这份礼物，请返回后重新打开。', 'This account cannot send this gift right now. Go back and open it again.'],
         'insufficient-credits': ['试用邮资不足，已保留这次选择。', 'Not enough trial postage. Your choices are saved.'],
         'insufficient-inventory': ['背包数量不够，请减少数量或换用试用邮资。', 'Not enough in your bag. Reduce the quantity or use trial postage.'],
         'unavailable-gift': ['这份礼物暂未开放，可以先挑另一件。', 'This gift is not available yet. Choose another for now.'],
-        'invalid-reward': ['基础赠礼券暂不可用，请换用背包或试用邮资。', 'Return postage is not available. Choose your bag or trial postage.'],
+        'invalid-reward': ['基础赠礼券暂不可用，请换用背包或试用邮资。', 'This gift voucher is unavailable. Use a gift from your bag or trial postage.'],
         'storage-unavailable': ['这次未能保存，请重试。原有邮资和背包会保留。', 'Could not save. Retry with your existing postage and bag.'],
         'storage-invalid': ['当前本机赠礼记录无法读取，暂时不能寄出。', 'Your local gift records could not be read. Sending is paused.'],
       }
-      setError(messages[code]?.[zh ? 0 : 1] ?? text('未能确认这次寄件，请重试。重复点击只记一次。', 'Could not confirm this parcel. Retry safely.'))
+      setError(messages[code]?.[zh ? 0 : 1] ?? text('暂时看不到是否寄送成功，请点「继续寄送」重试。不会重复寄送。', 'We could not check whether your gift was sent. Select Continue sending to retry without sending it twice.'))
     } finally {
       lock.current = false
       setBusy(false)
@@ -270,7 +292,7 @@ export function GiftStudio({ owner, target, onClose, onVisitSpace, onBackToChat,
   }
 
   function discard() {
-    if (lock.current) return
+    if (lock.current || pendingIntent) return
     clearDraft()
     onClose()
   }
@@ -300,13 +322,14 @@ export function GiftStudio({ owner, target, onClose, onVisitSpace, onBackToChat,
     return <button className="gs-receipt-row" key={receipt.id} onClick={() => setConfirmedId(receipt.id)}>
       <span className={'gs-mini-art gs-tint-' + receipt.lines[0].snapshot.category}><GiftIcon id={receipt.lines[0].giftId} /></span>
       <span><b>{nameOf(receipt.lines[0].snapshot)}{receipt.lines[0].quantity > 1 ? ` ×${receipt.lines[0].quantity}` : ''}</b><small>{new Date(receipt.createdAt).toLocaleDateString(zh ? 'zh-CN' : 'en')} · {receipt.note || t(`world.${receipt.target.world}`)}</small></span>
-      <em className={arrived ? 'arrived' : ''}>{arrived ? text('已抵达', 'Arrived') : text('运送中', 'In transit')}<ArrowUpRightIcon /></em>
+      <em className={arrived ? 'arrived' : ''}>{receipt.status === 'delivery_failed' ? text('投递未完成', 'Delivery failed') : arrived ? text('已抵达', 'Arrived') : text('运送中', 'In transit')}<ArrowUpRightIcon /></em>
     </button>
   }
 
   let content
   if (confirmed) {
     const arrived = hasArrived(confirmed, now)
+    const failed = confirmed.status === 'delivery_failed'
     const first = confirmed.lines[0]
     const placement = giftPlacementLabel(confirmed.target.world, first.giftId, zh)
     const receiptPlace = placement ?? text('个人礼物记录', 'Personal gift records')
@@ -318,18 +341,18 @@ export function GiftStudio({ owner, target, onClose, onVisitSpace, onBackToChat,
           ? <img className="gs-delivery-photo" src={confirmed.deliveryPhoto} alt={text('抵达时的投递留影', 'Photo of the arrival')} />
           : <div className={'gs-delivery-seal gs-tint-' + first.snapshot.category} aria-hidden="true">{arrived ? <GiftIcon id={first.giftId} /> : <PackageIcon className="gift-icon" weight="duotone" />}</div>}
         <span className="gs-confirm-place">{t(`world.${confirmed.target.world}`)}<small>{receiptPlace}</small></span>
-        <b><CheckCircleIcon />{arrived ? text('已抵达', 'Delivered') : text('投递中', 'In transit')}</b>
+        <b>{!failed && <CheckCircleIcon />}{failed ? text('投递未完成', 'Delivery failed') : arrived ? text('已抵达', 'Delivered') : text('投递中', 'In transit')}</b>
       </div>
       <div className="gs-confirm-text">
         <div className="gs-eyebrow">ELY / {confirmed.id.slice(0, 6).toUpperCase()}</div>
-        <h2>{arrived ? text('这份心意，已经留下', 'Your gift is here') : text('已为这份心意封件', 'Your gift is sealed')}</h2>
+        <h2>{failed ? text('这份心意没能送达', 'Your gift could not be delivered') : arrived ? text('这份心意，已经留下', 'Your gift is here') : text('已为这份心意封件', 'Your gift is sealed')}</h2>
         <p>{nameOf(first.snapshot)} ×{first.quantity} · {confirmed.target.name}</p>
-        <p className="gs-muted">{placement
+        <p className="gs-muted">{failed ? text('回执已保留在礼物记录里。', 'The receipt is saved in your gift records.') : placement
           ? (arrived ? text(`已放在${placement}。`, `Placed ${placement.toLowerCase()}.`) : text(`抵达后，会放在${placement}。`, `On arrival, it will be placed ${placement.toLowerCase()}.`))
           : (arrived ? text('已收进礼物记录，随时可以回来重温。', 'Saved in your gift records, ready to revisit.') : text('抵达后，会收进礼物记录。', 'It will be saved in your gift records on arrival.'))}</p>
         {confirmed.note && <blockquote>{confirmed.note}</blockquote>}
-        <div className="gs-delivery-steps"><span className="done">{text('已收件', 'Accepted')}</span><i /><span className="done">{text('运送中', 'In transit')}</span><i /><span className={arrived ? 'done' : ''}>{text('已抵达', 'Delivered')}</span></div>
-        <p className="gs-small">{text('本机虚拟试送。寄件已保存，稍后可以回来查看。', 'Local virtual delivery. Your parcel is saved for your next visit.')}</p>
+        {!failed && <div className="gs-delivery-steps"><span className="done">{text('已收件', 'Accepted')}</span><i /><span className="done">{text('运送中', 'In transit')}</span><i /><span className={arrived ? 'done' : ''}>{text('已抵达', 'Delivered')}</span></div>}
+        <p className="gs-small">{service ? text('当前账号的虚拟试送。寄件已保存，稍后可以回来查看。', 'Virtual delivery in this account. Your parcel is saved for your next visit.') : text('本机虚拟试送。寄件已保存，稍后可以回来查看。', 'Local virtual delivery. Your parcel is saved for your next visit.')}</p>
       </div>
       </div>
       <div className="gs-confirm-controls">
@@ -337,72 +360,72 @@ export function GiftStudio({ owner, target, onClose, onVisitSpace, onBackToChat,
         <div className="gs-confirm-actions">
           {onBackToChat && onVisitSpace && <button onClick={() => onVisitSpace(confirmed)}>{text('去 TA 的空间看看', 'Visit their space')}</button>}
           <button onClick={() => { setConfirmedId(null); setTab('catalog') }}>{text('继续挑选', 'Choose another')}</button>
-          <button onClick={() => onWatch(confirmed)}><PaperPlaneTiltIcon />{text('观看这次旅途', 'Watch the journey')}</button>
+          {!failed && <button disabled={watchBusy} onClick={() => onWatch(confirmed)}><PaperPlaneTiltIcon />{text('观看这次旅途', 'Watch the journey')}</button>}
         </div>
-        <small className="gs-bill">{confirmed.source === 'inventory' ? text('使用背包', 'From your bag') : confirmed.source === 'reward' ? text('使用基础赠礼券 ×1', '1 gift voucher used') : confirmed.cost === 0 ? text('免费心意', 'Free gift') : text(`使用 ${confirmed.cost} 试用邮资`, `${confirmed.cost} trial postage used`)} · {text('无真实扣费', 'No real charge')}</small>
+        <small className="gs-bill">{confirmed.source === 'inventory' ? text('使用背包', 'From your bag') : confirmed.source === 'reward' ? text('使用基础赠礼券 ×1', '1 gift voucher used') : confirmed.cost === 0 ? text('免费心意', 'Free gift') : text(`使用 ${confirmed.cost} ${service?'邮资':'试用邮资'}`, `${confirmed.cost} ${service?'postage':'trial postage'} used`)} · {text('无真实扣费', 'No real charge')}</small>
       </div>
     </section>
   } else if (tab === 'catalog' || compact) {
     content = <>
       {compact && !compactConfirm && <div className="gs-compact-tools">
-        <div className="gs-compact-sources" role="group" aria-label={text('挑选来源', 'Browse gifts')}>
-          <button disabled={busy} aria-pressed={compactSource === 'for-them'} onClick={() => setCompactSource('for-them')}>{text('为 TA', 'For them')}</button>
-          <button disabled={busy} aria-pressed={compactSource === 'bag'} onClick={() => setCompactSource('bag')}><BackpackIcon aria-hidden />{text('背包', 'My bag')}</button>
+        <div className="gs-compact-sources" role="group" aria-label={text('挑选礼物', 'Browse gifts')}>
+          <button disabled={busy || !!pendingIntent} aria-pressed={compactSource === 'for-them'} onClick={() => setCompactSource('for-them')}>{text('为 TA', 'For them')}</button>
+          <button disabled={busy || !!pendingIntent} aria-pressed={compactSource === 'bag'} onClick={() => setCompactSource('bag')}><BackpackIcon aria-hidden />{text('背包', 'My bag')}</button>
         </div>
-        <button className="gs-compact-more" disabled={busy} onClick={() => expand('catalog')}>{text('全部礼物', 'All gifts')}<ArrowUpRightIcon aria-hidden /></button>
+        <button className="gs-compact-more" disabled={busy || !!pendingIntent} onClick={() => expand('catalog')}>{text('全部礼物', 'All gifts')}<ArrowUpRightIcon aria-hidden /></button>
       </div>}
       {!compact && <div className="gs-catalog-tools">
-        <div className="gs-search"><MagnifyingGlassIcon /><input value={query} disabled={busy} onChange={event => setQuery(event.target.value)} placeholder={text('找一件能表达心意的礼物', 'Find a gift that says something')} aria-label={text('搜索礼物', 'Search gifts')} /></div>
+        <div className="gs-search"><MagnifyingGlassIcon /><input value={query} disabled={busy || !!pendingIntent} onChange={event => setQuery(event.target.value)} placeholder={text('找一件能表达心意的礼物', 'Find a gift that says something')} aria-label={text('搜索礼物', 'Search gifts')} /></div>
         <div className="gs-category-scroll" role="group" aria-label={text('礼物分类', 'Gift categories')}>
-          <button disabled={busy} aria-pressed={category === 'recommended'} onClick={() => changeCategory('recommended')}>{text('为 TA 挑选', 'For them')}</button>
-          <button disabled={busy} aria-pressed={category === 'all'} onClick={() => changeCategory('all')}>{text('全部', 'All')}<small>{browseCatalog.length}</small></button>
-          {categories.map(key => <button disabled={busy} key={key} aria-pressed={category === key} onClick={() => changeCategory(key)}>{categoryLabels[key][zh ? 0 : 1]}</button>)}
+          <button disabled={busy || !!pendingIntent} aria-pressed={category === 'recommended'} onClick={() => changeCategory('recommended')}>{text('为 TA 挑选', 'For them')}</button>
+          <button disabled={busy || !!pendingIntent} aria-pressed={category === 'all'} onClick={() => changeCategory('all')}>{text('全部', 'All')}<small>{browseCatalog.length}</small></button>
+          {categories.map(key => <button disabled={busy || !!pendingIntent} key={key} aria-pressed={category === key} onClick={() => changeCategory(key)}>{categoryLabels[key][zh ? 0 : 1]}</button>)}
         </div>
-        <div className="gs-filter-row"><span>{text(`${items.length} 件礼物`, `${items.length} gifts`)}</span><select value={filter} disabled={busy} onChange={event => setFilter(event.target.value as Filter)} aria-label={text('获得方式', 'How to get it')}><option value="all">{text('全部方式', 'All sources')}</option><option value="free">{text('免费心意', 'Free thoughts')}</option><option value="owned">{text('背包已有', 'In my bag')}</option></select></div>
+        <div className="gs-filter-row"><span>{text(`${items.length} 件礼物`, `${items.length} gifts`)}</span><select value={filter} disabled={busy || !!pendingIntent} onChange={event => setFilter(event.target.value as Filter)} aria-label={text('获得方式', 'How to get it')}><option value="all">{text('全部方式', 'All sources')}</option><option value="free">{text('免费心意', 'Free thoughts')}</option><option value="owned">{text('背包已有', 'In my bag')}</option></select></div>
       </div>}
       {(!compact || !compactConfirm) && <div className="gs-grid-scroll scroll-quiet">
         <div className="gs-grid">
-          {displayItems.map(item => <button className={'gs-item gs-tint-' + item.category + (item.available ? '' : ' unavailable')} key={item.id} disabled={busy} aria-pressed={item.id === gift?.id} aria-label={nameOf(item)} onClick={() => choose(item, compact && compactSource === 'bag')}>
+          {displayItems.map(item => <button className={'gs-item gs-tint-' + item.category + (item.available ? '' : ' unavailable')} key={item.id} disabled={busy || !!pendingIntent} aria-pressed={item.id === gift?.id} aria-label={nameOf(item)} onClick={() => choose(item, compact && compactSource === 'bag')}>
             <span className="gs-item-art"><GiftIcon id={item.id} /></span>
             <b>{nameOf(item)}</b><small>{compact && compactSource === 'bag' ? text(`已有 ${state.inventory[item.id] ?? 0} 件`, `${state.inventory[item.id] ?? 0} in your bag`) : priceLabel(item)}</small>
             {(state.inventory[item.id] ?? 0) > 0 && <em>{text('有', 'Bag')} {state.inventory[item.id]}</em>}
           </button>)}
         </div>
-        {displayItems.length === 0 && <div className="gs-empty"><MagnifyingGlassIcon /><h3>{compact && compactSource === 'bag' ? text('背包里暂时没有可寄的礼物', 'No ready-to-send gifts in your bag') : text('还没找到这份心意', 'No gift found yet')}</h3>{!compact && <p>{text('换一个词，或看看其他分类。', 'Try another word or category.')}</p>}<button onClick={() => { if (compact) setCompactSource('for-them'); else { setQuery(''); setCategory('all'); setFilter('all') } }}>{compact ? text('看看为 TA 挑选的', 'See gifts for them') : text('查看全部礼物', 'See all gifts')}</button></div>}
+        {balanceReady && displayItems.length === 0 && <div className="gs-empty"><MagnifyingGlassIcon /><h3>{compact && compactSource === 'bag' ? text('背包里暂时没有可寄的礼物', 'No ready-to-send gifts in your bag') : text('还没找到这份心意', 'No gift found yet')}</h3>{!compact && <p>{text('换一个词，或看看其他分类。', 'Try another word or category.')}</p>}<button onClick={() => { if (compact) setCompactSource('for-them'); else { setQuery(''); setCategory('all'); setFilter('all') } }}>{compact ? text('看看为 TA 挑选的', 'See gifts for them') : text('查看全部礼物', 'See all gifts')}</button></div>}
       </div>}
       {(!compact || compactConfirm) && <section className="gs-selection" aria-label={text('选中的礼物', 'Selected gift')}>
         {gift ? <>
-        <div className="gs-selected-head"><span className={'gs-selected-art gs-tint-' + gift.category}><GiftIcon id={gift.id} /></span><div className="min-w-0 flex-1"><h3>{nameOf(gift)}</h3><small>{effectLabel(gift)}</small></div><button className="min-h-11 shrink-0 px-1 text-[13px] text-ink-soft" disabled={busy} onClick={discard}>{text('取消赠礼', 'Cancel gift')}</button></div>
+        <div className="gs-selected-head"><span className={'gs-selected-art gs-tint-' + gift.category}><GiftIcon id={gift.id} /></span><div className="min-w-0 flex-1"><h3>{nameOf(gift)}</h3><small>{effectLabel(gift)}</small></div><button className="min-h-11 shrink-0 px-1 text-[13px] text-ink-soft" disabled={busy || !!pendingIntent} onClick={discard}>{text('取消赠礼', 'Cancel gift')}</button></div>
         <p className="gs-outcome">{outcomeOf(gift)}</p>
         {gift.available && !goalGift && <>
-          <label className="gs-note-field"><span>{text('捎句话', 'A note')}</span><input value={note} maxLength={120} disabled={busy} onChange={event => updateDraft({ note: event.target.value })} placeholder={text('想说的话，可以留空', 'Add a few words, if you like')} /></label>
-          {gift.cost > 0 && (stock > 0 || canUseReturn) && <div className="gs-sources" role="group" aria-label={text('使用方式', 'Postage source')}>
-            {stock > 0 && <button disabled={busy} aria-pressed={source === 'inventory'} onClick={() => { updateDraft({ source: 'inventory' }); setError('') }}><BackpackIcon />{text('背包', 'Bag')} {stock}</button>}
-            <button disabled={busy} aria-pressed={source === 'trial'} onClick={() => { updateDraft({ source: 'trial' }); setError('') }}>{text('试用邮资', 'Trial postage')}</button>
-            {returnPostage > 0 && canUseReturn && <button disabled={busy} aria-pressed={source === 'reward'} onClick={() => { updateDraft({ source: 'reward' }); setError('') }}><TicketIcon />{text('基础赠礼券', 'Return postage')} {returnPostage}</button>}
+          <label className="gs-note-field"><span>{text('捎句话', 'A note')}</span><input value={note} maxLength={120} disabled={busy || !!pendingIntent} onChange={event => updateDraft({ note: event.target.value })} placeholder={text('想说的话，可以留空', 'Add a few words, if you like')} /></label>
+          {gift.cost > 0 && (stock > 0 || canUseReturn || !!pendingIntent) && <div className="gs-sources" role="group" aria-label={text('使用方式', 'Postage source')}>
+            {(stock > 0 || pendingIntent?.body.source === 'inventory') && <button disabled={busy || !!pendingIntent} aria-pressed={source === 'inventory'} onClick={() => { updateDraft({ source: 'inventory' }); setError('') }}><BackpackIcon />{text('背包', 'Bag')} {stock}</button>}
+            <button disabled={busy || !!pendingIntent} aria-pressed={source === 'trial'} onClick={() => { updateDraft({ source: 'trial' }); setError('') }}>{text(service?'邮资':'试用邮资',service?'Postage':'Trial postage')}</button>
+            {(returnPostage > 0 && canUseReturn || pendingIntent?.body.source === 'voucher') && <button disabled={busy || !!pendingIntent} aria-pressed={source === 'reward'} onClick={() => { updateDraft({ source: 'reward' }); setError('') }}><TicketIcon />{text('基础赠礼券', 'Gift voucher')} {returnPostage}</button>}
           </div>}
         </>}
         <div className="gs-send-row">
-          {gift.stackable && gift.available && !goalGift ? <div className="gs-quantities" role="group" aria-label={text('赠送数量', 'Gift quantity')}>{[1, 3, 5].map(q => <button key={q} disabled={busy} aria-pressed={quantity === q} onClick={() => { updateDraft({ quantity: q }); setError('') }}>×{q}</button>)}</div> : <span className="gs-small">{goalGift ? text('用于共同目标', 'For a shared wish') : text('一次选择，一份心意', 'One gift, one thought')}</span>}
-          <button className="gs-primary" disabled={busy || !gift.available || !goalGift && !affordable} onClick={submit}>
-            {busy ? <><CircleNotchIcon className="gs-spin" />{text('封件中', 'Sealing')}</> : !gift.available ? text('服务筹备中', 'Coming later') : goalGift ? text('发起共同目标', 'Start a shared wish') : source === 'inventory' ? text('用背包寄出', 'Send from bag') : source === 'reward' ? text('用券寄出', 'Use return postage') : text(`寄出 · ${cost} 邮资`, `Send · ${cost} postage`)}
+          {gift.stackable && gift.available && !goalGift ? <div className="gs-quantities" role="group" aria-label={text('赠送数量', 'Gift quantity')}>{[1, 3, 5].map(q => <button key={q} disabled={busy || !!pendingIntent} aria-pressed={quantity === q} onClick={() => { updateDraft({ quantity: q }); setError('') }}>×{q}</button>)}</div> : <span className="gs-small">{goalGift ? text('用于共同目标', 'For a shared wish') : text('一次选择，一份心意', 'One gift, one thought')}</span>}
+          <button className="gs-primary" disabled={busy || !pendingIntent && (!gift.available || !goalGift && !affordable || !!service && service.status !== 'ready')} onClick={submit}>
+            {busy ? <><CircleNotchIcon className="gs-spin" />{text('封件中', 'Sealing')}</> : pendingIntent ? text('继续寄送', 'Continue sending') : !gift.available ? text('服务筹备中', 'Coming later') : goalGift ? text('发起共同目标', 'Start a shared wish') : source === 'inventory' ? text('用背包寄出', 'Send from bag') : source === 'reward' ? text('用券寄出', 'Send with voucher') : text(`寄出 · ${cost} 邮资`, `Send · ${cost} postage`)}
           </button>
         </div>
-        <div className="gs-form-status" role="status">{error || (gift.available && !goalGift && !affordable ? source === 'inventory' ? text('背包数量不够，可减少数量或换用试用邮资。', 'Not enough in your bag. Reduce the quantity or change source.') : text('可用试用邮资不足，请减少数量。', 'Not enough trial postage. Reduce the quantity.') : goalGift ? text('免费放入第一份，好友每人可添一份；不扣邮资或背包。', 'Your first contribution is free; friends can add one each. No postage or bag items used.') : '')}</div>
-        {onPurchase && gift.available && !goalGift && source === 'trial' && !affordable && !canUseReturn && stock < quantity && <button className="gs-invite-inline" disabled={busy} onClick={onPurchase}>{text('购买邮资（演示）', 'Buy postage (preview)')}<ArrowUpRightIcon aria-hidden /></button>}
-        {onInvite && !affordable && acceptsPostage(gift) && quantity === 1 && returnPostage === 0 && <button className="gs-invite-inline" disabled={busy} onClick={openInvite}><TicketIcon aria-hidden />{text('邀友领券', 'Invite for a voucher')}<ArrowUpRightIcon aria-hidden /></button>}
+        <div className="gs-form-status" role="status">{error || (!pendingIntent && gift.available && !goalGift && !affordable ? source === 'inventory' ? text(service?'背包数量不够，可减少数量或换用邮资。':'背包数量不够，可减少数量或换用试用邮资。', 'Not enough in your bag. Reduce the quantity or change source.') : text(service?'可用邮资不足，请减少数量。':'可用试用邮资不足，请减少数量。', service?'Not enough postage. Reduce the quantity.':'Not enough trial postage. Reduce the quantity.') : goalGift ? text('免费放入第一份，好友每人可添一份；不扣邮资或背包。', 'Your first contribution is free; friends can add one each. No postage or bag items used.') : '')}</div>
+        {onPurchase && gift.available && !goalGift && source === 'trial' && !affordable && !canUseReturn && stock < quantity && <button className="gs-invite-inline" disabled={busy || !!pendingIntent} onClick={onPurchase}>{text(service?'购买邮资':'购买邮资（演示）',service?'Buy postage':'Buy postage (preview)')}<ArrowUpRightIcon aria-hidden /></button>}
+        {onInvite && !affordable && acceptsPostage(gift) && quantity === 1 && returnPostage === 0 && <button className="gs-invite-inline" disabled={busy || !!pendingIntent} onClick={openInvite}><TicketIcon aria-hidden />{text('邀友领券', 'Invite for a voucher')}<ArrowUpRightIcon aria-hidden /></button>}
         </> : <div className="flex items-center gap-3"><p className="gs-outcome flex-1" role="status">{note ? text('附言已保留，选一件礼物后可继续。', 'Your note is saved. Choose a gift to continue.') : text('先选一件礼物。', 'Choose a gift to begin.')}</p>{(note || preferred) && <button className="min-h-11 shrink-0 px-1 text-[13px] text-ink-soft" onClick={discard}>{text('取消赠礼', 'Cancel gift')}</button>}</div>}
       </section>}
-      {compact && !compactConfirm && <div className="gs-compact-footer"><span>{text('本机虚拟赠礼 · 无真实扣费', 'Local virtual gifts · No real charge')}</span><button disabled={busy} onClick={() => expand('receipts')}>{text('礼物记录', 'Gift records')}<ArrowUpRightIcon aria-hidden /></button></div>}
+      {compact && !compactConfirm && <div className="gs-compact-footer"><span>{service ? text('当前账号虚拟赠礼 · 无真实扣费', 'Account virtual gifts · No real charge') : text('本机虚拟赠礼 · 无真实扣费', 'Local virtual gifts · No real charge')}</span><button disabled={busy || !!pendingIntent} onClick={() => expand('receipts')}>{text('礼物记录', 'Gift records')}<ArrowUpRightIcon aria-hidden /></button></div>}
     </>
   } else if (tab === 'bag') {
     const bagItems = browseCatalog.filter(item => (state.inventory[item.id] ?? 0) > 0)
     content = <section className="gs-content-scroll scroll-quiet">
       <div className="gs-section-heading"><span className="gs-eyebrow">MY COLLECTION</span><h2>{text('我的礼物背包', 'My gift collection')}</h2><p>{text('已有的物件，可以继续捎给牵挂的对象。', 'Send something you already have to someone you care about.')}</p></div>
-      {returnPostage > 0 && <div className="gs-postage"><TicketIcon /><div><small>RETURN POSTAGE</small><h3>{text('基础赠礼券', 'Return postage')} ×{returnPostage}</h3><p>{text('可寄一件不超过 8 邮资的基础礼物。', 'Send one basic gift worth up to 8 postage.')}</p><button onClick={() => { setTab('catalog'); updateDraft({ source: 'reward', quantity: 1, giftId: null }); setCategory('care'); setFilter('all'); setQuery('') }}>{text('挑一件寄出', 'Choose a gift')}<ArrowUpRightIcon /></button></div></div>}
+      {returnPostage > 0 && <div className="gs-postage"><TicketIcon /><div><small>RETURN POSTAGE</small><h3>{text('基础赠礼券', 'Gift voucher')} ×{returnPostage}</h3><p>{text('可寄一件不超过 8 邮资的基础礼物。', 'Send one basic gift worth up to 8 postage.')}</p><button onClick={() => { setTab('catalog'); updateDraft({ source: 'reward', quantity: 1, giftId: null }); setCategory('care'); setFilter('all'); setQuery('') }}>{text('挑一件寄出', 'Choose a gift')}<ArrowUpRightIcon /></button></div></div>}
       <div className="gs-bag-list">{bagItems.map(item => <button className="gs-bag-item" key={item.id} onClick={() => choose(item, true)}><span className={'gs-mini-art gs-tint-' + item.category}><GiftIcon id={item.id} /></span><span><b>{nameOf(item)}</b><small>{effectLabel(item)}</small></span><em>×{state.inventory[item.id]}</em><ArrowUpRightIcon /></button>)}</div>
-      {!bagItems.length && !returnPostage && <div className="gs-empty"><BackpackIcon /><h3>{text('背包还有很多位置', 'Room for more gifts')}</h3><p>{text('先挑一份免费心意，或与朋友一起完成一个目标。', 'Choose a free thought or create something with friends.')}</p><button onClick={() => openTab('catalog')}>{text('去挑礼物', 'Find a gift')}</button></div>}
-      <p className="gs-local-note">{text('体验赠礼保存在当前账号的本机空间。', 'Your trial gifts stay in this account’s local space.')}</p>
+      {balanceReady && !bagItems.length && !returnPostage && <div className="gs-empty"><BackpackIcon /><h3>{text('背包还有很多位置', 'Room for more gifts')}</h3><p>{text('先挑一份免费心意，或与朋友一起完成一个目标。', 'Choose a free thought or create something with friends.')}</p><button onClick={() => openTab('catalog')}>{text('去挑礼物', 'Find a gift')}</button></div>}
+      <p className="gs-local-note">{service ? text('体验赠礼保存在当前账号的空间。', 'Your trial gifts stay in this account’s space.') : text('体验赠礼保存在当前账号的本机空间。', 'Your trial gifts stay in this account’s local space.')}</p>
     </section>
   } else if (tab === 'goals') {
     const goals: { kind: 'home' | 'album'; cn: string; en: string; desc: string; english: string; marker: string }[] = [
@@ -413,11 +436,12 @@ export function GiftStudio({ owner, target, onClose, onVisitSpace, onBackToChat,
       <div className="gs-section-heading"><span className="gs-eyebrow">SOMETHING WE MAKE</span><h2>{text('给心愿，找个同行人', 'Find someone to share a wish')}</h2><p>{text('从一个具体的愿望开始，看看大家能一起留下什么。', 'Start with a wish and see what you can make together.')}</p></div>
       {onOpenGoal && ownGoals.length > 0 && <div className="gs-existing-goals"><h3>{text('继续我们的心愿', 'Continue a shared wish')}</h3>{ownGoals.slice().reverse().map(goal => <button key={goal.id} onClick={() => onOpenGoal(goal.id)}><span className="gs-existing-symbol">{goal.kind === 'flight' ? <PaperPlaneTiltIcon /> : goal.kind === 'home' ? <HouseSimpleIcon /> : <ImageIcon />}</span><span><b>{goal.kind === 'flight' ? text('共同航班', 'Shared departure') : goals.find(item => item.kind === goal.kind)?.[zh ? 'cn' : 'en']}</b><small>{text('发起于', 'Started')} {new Date(goal.createdAt).toLocaleDateString(zh ? 'zh-CN' : 'en')}</small></span><ArrowUpRightIcon /></button>)}</div>}
       {goals.map(goal => <button className={'gs-goal-card gs-goal-' + goal.kind} key={goal.kind} onClick={() => onGoal(goal.kind)}><small>{goal.marker}</small><span className="gs-goal-symbol">{goal.kind === 'home' ? <HouseSimpleIcon /> : <ImageIcon />}</span><h3>{zh ? goal.cn : goal.en}</h3><p>{zh ? goal.desc : goal.english}</p><span className="gs-goal-open">{text('开始一个共同目标', 'Start a shared wish')}<ArrowUpRightIcon /></span></button>)}
-      <p className="gs-local-note">{text('发起前预览公开内容。每份贡献计入同一个目标。', 'Preview what you share before starting. Every contribution joins the same goal.')}</p>
+      <p className="gs-local-note">{service ? text('发起前可以预览公开内容。朋友投稿通过你的审核后，才计入完成进度。', 'Preview what you share before starting. Contributions count toward progress after you approve them.') : text('发起前预览公开内容。每份贡献计入同一个目标。', 'Preview what you share before starting. Every contribution joins the same goal.')}</p>
     </section>
   } else if (tab === 'received') {
     content = <section className="gs-content-scroll scroll-quiet">
       <div className="gs-section-heading"><h2>{text('收到的礼物', 'Received gifts')}</h2><p>{text(`来自${target.name}的剧情回礼`, `Story gifts from ${target.name}`)}</p></div>
+      {service && service.receivedStatus !== 'ready' && <p className="gs-form-status" role="status">{service.receivedStatus === 'loading' ? text('正在读取来礼…', 'Loading received gifts…') : giftServiceMessage(service.receivedError, zh)}<button onClick={() => void service.refresh()}>{text('重试', 'Retry')}</button></p>}
       {received.length ? <div className="gs-receipt-list">{received.map(item => {
         const first = item.lines[0]
         return <button type="button" className="gs-receipt-row" key={item.id} onClick={() => onReceived?.(item.id)} disabled={!onReceived}>
@@ -425,12 +449,12 @@ export function GiftStudio({ owner, target, onClose, onVisitSpace, onBackToChat,
           <span><b>{nameOf(first.snapshot)}{first.quantity > 1 && ` ×${first.quantity}`}</b><small>{item.note || new Date(item.createdAt).toLocaleDateString(lang)}</small></span>
           <em>{item.openedAt == null ? text('待拆', 'Unopened') : item.placement === 'space' ? text('已陈列', 'On display') : text('已拆开', 'Opened')}<ArrowUpRightIcon/></em>
         </button>
-      })}</div> : <div className="gs-empty"><PresentIcon/><h3>{text('还没有收到来礼', 'No gifts received yet')}</h3><p>{text('收到的剧情回礼会保存在这里。', 'Gifts received in this story will appear here.')}</p></div>}
+      })}</div> : (!service || service.receivedStatus === 'ready') && <div className="gs-empty"><PresentIcon/><h3>{text('还没有收到来礼', 'No gifts received yet')}</h3><p>{text('收到的剧情回礼会保存在这里。', 'Gifts received in this story will appear here.')}</p></div>}
     </section>
   } else {
     content = <section className="gs-content-scroll scroll-quiet">
       <div className="gs-section-heading"><span className="gs-eyebrow">LETTERS THAT STAY</span><h2>{text('给 TA 留下的心意', 'What you have left for them')}</h2><p>{target.name} · {worldName}</p></div>
-      {receipts.length ? <div className="gs-receipt-list">{receipts.slice().reverse().map(receiptRow)}</div> : <div className="gs-empty"><PackageIcon /><h3>{text('还没有这次寄件', 'A first parcel awaits')}</h3><p>{text('一句祝愿、一件小物，都可以从这里留下。', 'Begin with a small object and a few words.')}</p><button onClick={() => openTab('catalog')}>{text('挑第一份心意', 'Choose a first gift')}</button></div>}
+      {receipts.length ? <div className="gs-receipt-list">{receipts.slice().reverse().map(receiptRow)}</div> : balanceReady && <div className="gs-empty"><PackageIcon /><h3>{text('还没有这次寄件', 'A first parcel awaits')}</h3><p>{text('一句祝愿、一件小物，都可以从这里留下。', 'Begin with a small object and a few words.')}</p><button onClick={() => openTab('catalog')}>{text('挑第一份心意', 'Choose a first gift')}</button></div>}
     </section>
   }
 
@@ -458,12 +482,12 @@ export function GiftStudio({ owner, target, onClose, onVisitSpace, onBackToChat,
     }
   }}>
     <header className="gs-header"><button className="gs-back" disabled={busy} onClick={closeCurrent} aria-label={text('返回', 'Back')}><ArrowLeftIcon /></button><div><h1>{confirmed ? text('寄件回执', 'Parcel receipt') : compactConfirm ? text('确认这份心意', 'Ready to send') : compact ? text('送礼物', 'Send a gift') : text(`给${target.name}挑礼物`, `A gift for ${target.name}`)}</h1>{compact && <p className="gs-compact-recipient">{target.name} · {worldName}</p>}</div>
-      {onInvite && !confirmed ? <button className="gs-credit gs-credit-action" disabled={busy} onClick={openInvite} aria-label={text(`试用邮资 ${state.credits}，基础赠礼券 ${returnPostage} 张，邀友领券`, `${state.credits} trial postage, ${returnPostage} gift vouchers. Invite for a voucher`)}>
-        <b>{state.credits}</b><small>{text('试用邮资', 'Trial postage')}</small><span className="gs-credit-link"><span>{text(`券 ${returnPostage} · 邀友领券`, `${returnPostage} vouchers · Invite`)}</span><ArrowUpRightIcon aria-hidden /></span>
-      </button> : <span className="gs-credit"><b>{state.credits}</b><small>{text('试用邮资', 'Trial postage')}</small></span>}
+      {onInvite && !confirmed ? <button className="gs-credit gs-credit-action" disabled={busy || !!pendingIntent} onClick={openInvite} aria-label={text(`${service?'邮资':'试用邮资'} ${postageLabel}，基础赠礼券 ${voucherLabel} 张，邀友领券`, `${postageLabel} ${service?'postage':'trial postage'}, ${voucherLabel} gift vouchers. Invite for a voucher`)}>
+        <b>{postageLabel}</b><small>{text(service?'邮资':'试用邮资',service?'Postage':'Trial postage')}</small><span className="gs-credit-link"><span>{text(`券 ${voucherLabel} · 邀友领券`, `${voucherLabel} vouchers · Invite`)}</span><ArrowUpRightIcon aria-hidden /></span>
+      </button> : <span className="gs-credit"><b>{postageLabel}</b><small>{text(service?'邮资':'试用邮资',service?'Postage':'Trial postage')}</small></span>}
     </header>
     {!confirmed && !compact && <div className="gs-context"><img src={WORLDS[target.world].thumb} alt="" /><span>{target.name}<small>{worldName}</small></span><em>{text('虚拟寄送 · 无真实扣费', 'Virtual gifts · No real charge')}</em></div>}
-    <main className={'gs-main gs-view-' + tab}>{content}</main>
-    {!confirmed && !compact && <nav className="gs-bottom-nav" aria-label={text('礼物中心', 'Gift centre')}>{tabs.map(item => <button key={item.id} disabled={busy} aria-current={tab === item.id ? 'page' : undefined} onClick={() => openTab(item.id)}><item.icon weight={tab === item.id ? 'fill' : 'regular'} /><span>{zh ? item.cn : item.en}</span></button>)}</nav>}
+    <main className={'gs-main gs-view-' + tab}>{service && service.status !== 'ready' && <div className="gs-form-status" role="status">{service.status === 'loading' ? text('正在读取礼物与资产…', 'Loading gifts and assets…') : giftServiceMessage(service.error, zh)}{service.status === 'error' && <button className="min-h-11 px-3" onClick={() => void service.refresh()}>{text('重试', 'Retry')}</button>}</div>}{content}</main>
+    {!confirmed && !compact && <nav className="gs-bottom-nav" aria-label={text('礼物中心', 'Gift centre')}>{tabs.map(item => <button key={item.id} disabled={busy || !!pendingIntent} aria-current={tab === item.id ? 'page' : undefined} onClick={() => openTab(item.id)}><item.icon weight={tab === item.id ? 'fill' : 'regular'} /><span>{zh ? item.cn : item.en}</span></button>)}</nav>}
   </div>
 }

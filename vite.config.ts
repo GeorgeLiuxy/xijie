@@ -1,4 +1,4 @@
-import { defineConfig, type HtmlTagDescriptor, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type HtmlTagDescriptor, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
@@ -15,6 +15,47 @@ export default defineConfig(({ mode }) => {
   const emitSourcemaps = mode === 'development'
   const frontendRoot = path.resolve(__dirname, 'frontend')
   const defaultOutDir = path.resolve(__dirname, 'dist')
+
+  const { VITE_XIJIE_AUTH_MODE: authMode, XIJIE_IDENTITY_URL: identityUrl, XIJIE_PEOPLE_URL: peopleUrl, XIJIE_CONVERSATIONS_URL: conversationsUrl, XIJIE_MEMORIES_URL: memoriesUrl, XIJIE_SOCIAL_URL: socialUrl, XIJIE_MEDIA_URL: mediaUrl, XIJIE_GIFTS_URL: giftsUrl } = loadEnv(
+    mode, __dirname, ['VITE_XIJIE_AUTH_MODE', 'XIJIE_IDENTITY_URL', 'XIJIE_PEOPLE_URL', 'XIJIE_CONVERSATIONS_URL', 'XIJIE_MEMORIES_URL', 'XIJIE_SOCIAL_URL', 'XIJIE_MEDIA_URL', 'XIJIE_GIFTS_URL'],
+  )
+  if ((authMode && authMode !== 'service' && authMode !== 'preview') || (authMode === 'service') !== !!identityUrl) {
+    throw new Error('Set VITE_XIJIE_AUTH_MODE=service and XIJIE_IDENTITY_URL together to enable the identity service.')
+  }
+  if (peopleUrl && authMode !== 'service') throw new Error('XIJIE_PEOPLE_URL requires service mode.')
+  if (conversationsUrl && authMode !== 'service') throw new Error('XIJIE_CONVERSATIONS_URL requires service mode.')
+  if (memoriesUrl && authMode !== 'service') throw new Error('XIJIE_MEMORIES_URL requires service mode.')
+  if (socialUrl && authMode !== 'service') throw new Error('XIJIE_SOCIAL_URL requires service mode.')
+  if (mediaUrl && authMode !== 'service') throw new Error('XIJIE_MEDIA_URL requires service mode.')
+  if (giftsUrl && authMode !== 'service') throw new Error('XIJIE_GIFTS_URL requires service mode.')
+  const giftsTarget = proxyOrigin('XIJIE_GIFTS_URL', giftsUrl)
+  const identityTarget = proxyOrigin('XIJIE_IDENTITY_URL', identityUrl)
+  const peopleTarget = proxyOrigin('XIJIE_PEOPLE_URL', peopleUrl)
+  const conversationsTarget = proxyOrigin('XIJIE_CONVERSATIONS_URL', conversationsUrl)
+  const memoriesTarget = proxyOrigin('XIJIE_MEMORIES_URL', memoriesUrl)
+  const socialTarget = proxyOrigin('XIJIE_SOCIAL_URL', socialUrl)
+  const mediaTarget = proxyOrigin('XIJIE_MEDIA_URL', mediaUrl)
+  const serviceProxy = {
+    ...(giftsTarget ? { '^/v1/(gift-catalog|gift-deliveries|gift-delivery-photos|received-gifts|notifications|wallet|products|purchase-quotes|orders)([/?]|$)': { target: giftsTarget }, '^/v1/callbacks/(payments|refunds)/(jeepay|hyperswitch)([/?]|$)': {target:giftsTarget} } : {}),
+    ...(identityTarget ? { '^/v1/(auth|sessions|accounts|policies|data-request-receipts|referrals|content-reports)([/?]|$)': { target: identityTarget }, '^/v1/public/referrals([/?]|$)': {target:identityTarget} } : {}),
+    ...(conversationsTarget ? {
+      '^/v1/search\\?(?:[^&]*&)*scope=conversations(?:&|$)': { target: conversationsTarget },
+      '^/v1/persons/[^/]+/letters([/?]|$)': { target: conversationsTarget },
+      '^/v1/persons/[^/]+/(story-branches|offline-life)([/?]|$)':{target:conversationsTarget},
+      '^/v1/(story-branches|story-generation-jobs)([/?]|$)':{target:conversationsTarget},
+    } : {}),
+    ...(memoriesTarget ? {
+      '^/v1/generation-jobs/[^?]+\\?(?:[^&]*&)*kind=memory_suggestion(?:&|$)': { target: memoriesTarget },
+      '^/v1/persons/[^/]+/memory-candidates([/?]|$)': { target: memoriesTarget },
+      '^/v1/persons/[^/]+/memories([/?]|$)': { target: memoriesTarget },
+      '^/v1/persons/[^/]+/memory-imports([/?]|$)': { target: memoriesTarget },
+      '^/v1/search([/?]|$)': { target: memoriesTarget },
+    } : {}),
+    ...(peopleTarget ? { '^/v1/(person-drafts|persons|worlds|person-reminders)([/?]|$)': { target: peopleTarget } } : {}),
+    ...(conversationsTarget ? { '^/v1/(conversations|generation-jobs)([/?]|$)': { target: conversationsTarget },'^/v1/call-sessions([/?]|$)':{target:conversationsTarget,ws:true} } : {}),
+    ...(socialTarget ? { '^/v1/(feed|posts|social-generation-jobs|shared-albums)([/?]|$)': { target: socialTarget },'^/v1/public/shared-albums([/?]|$)':{target:socialTarget} } : {}),
+    ...(mediaTarget ? { '^/v1/(media|person-voices)([/?]|$)': { target: mediaTarget } } : {}),
+  }
 
   return {
     root: frontendRoot,
@@ -36,9 +77,7 @@ export default defineConfig(({ mode }) => {
         },
       },
       react(),
-      giftService(),
-      relayService(),
-      inviteService(),
+      ...(authMode === 'service' ? [] : [giftService(), relayService(), inviteService()]),
       tailwindcss(),
       figmaSiteConfiguration(siteConfiguration),
       figmaErrorOverlayReplay(),
@@ -54,6 +93,7 @@ export default defineConfig(({ mode }) => {
       host: process.env.FIGMA_DEV_SERVER_HOST || '0.0.0.0',
       port: parseInt(process.env.PORT || '8443'),
       strictPort: true,
+      proxy: serviceProxy,
       fs: { allow: [frontendRoot, path.resolve(__dirname, 'node_modules')] },
       watch: {
         ignored: [
@@ -62,11 +102,21 @@ export default defineConfig(({ mode }) => {
       },
     },
     preview: {
+      proxy: serviceProxy,
       host: process.env.FIGMA_DEV_SERVER_HOST || '0.0.0.0',
       port: parseInt(process.env.PORT || '8443'),
     },
   }
 })
+
+function proxyOrigin(name: string, value: string | undefined) {
+  if (!value) return undefined
+  const url = new URL(value)
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+    throw new Error(`${name} must be an HTTP or HTTPS origin.`)
+  }
+  return url.origin
+}
 
 type FigmaSiteConfiguration = {
   title?: string

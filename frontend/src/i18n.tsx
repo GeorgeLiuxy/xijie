@@ -70,12 +70,10 @@ const LANG_STORE = 'elysium.lang.v1'
 export function detectLang(): Lang {
   try {
     const saved = localStorage.getItem(LANG_STORE) as Lang | null
-    if (saved && LANGS.some((l) => l.code === saved)) return saved
+    if (saved && LANGS.some((l) => l.code === saved)) return saved === 'zh-CN' || saved === 'zh-TW' ? 'zh-CN' : 'en'
   } catch { /* ignore */ }
   const nav = (typeof navigator !== 'undefined' ? navigator.language : 'en').toLowerCase()
-  if (nav.startsWith('zh')) return nav.includes('tw') || nav.includes('hk') || nav.includes('hant') ? 'zh-TW' : 'zh-CN'
-  if (nav.startsWith('ja')) return 'ja'
-  if (nav.startsWith('ko')) return 'ko'
+  if (nav.startsWith('zh')) return 'zh-CN'
   return 'en'
 }
 export function persistLang(l: Lang) { try { localStorage.setItem(LANG_STORE, l) } catch { /* ignore */ } }
@@ -133,7 +131,7 @@ const ZH: Dict = {
   'profile.message': '发消息', 'profile.call': '语音通话', 'profile.video': '影像', 'profile.more': '关于 TA', 'profile.reply': '有回信',
   'profile.found': '相认于 {date}', 'profile.view': '查看资料',
   /* auth */
-  'auth.phone.ph': '手机号', 'auth.getCode': '获取验证码', 'auth.apple': 'Apple', 'auth.wechat': '微信',
+  'auth.phone.ph': '手机号', 'auth.getCode': '获取验证码', 'auth.apple': 'Apple', 'auth.wechat': '微信', 'auth.google': 'Google',
   'auth.agree': '同意《服务条款》《隐私政策》《AI 呈现说明》',
   'auth.code.sentTo': '验证 {dial} {phone}', 'auth.code.resendIn': '{s}s 后重发', 'auth.code.resend': '重新发送',
   'auth.code.hint': '演示验证码 {code}',
@@ -169,6 +167,9 @@ const ZH: Dict = {
   /* seek */
   'seek.title': '寻找 TA', 'seek.sub': '以记忆为坐标', 'seek.sample': '示例', 'seek.ai': 'TA 由 AI 依据你提供的记忆呈现',
   'seek.begin': '开始寻找', 'seek.need': '称呼，加上面容或故事，即可开始',
+  'seek.needStory': '一个称呼、一句回忆，就能开始寻找。',
+  'seek.shortStory': '写一句 TA 说过的话，或一件你记得的小事。',
+  'seek.personalityHints': '从故事里找到的说话线索',
   'seek.node.name': '称呼', 'seek.node.face': '面容', 'seek.node.voice': '声音', 'seek.node.story': '故事', 'seek.node.time': '时光', 'seek.node.place': '地点',
   'seek.name.called': '你对 TA 的称呼', 'seek.name.called.ph': '如：外婆、阿远', 'seek.name.real': '名字（可选）', 'seek.name.real.ph': '如：林秀英',
   'seek.face.sub': '可选多张，支持不同年纪', 'seek.face.album': '从相册选择', 'seek.face.samples': '示例相册', 'seek.face.main': '主照片',
@@ -191,7 +192,7 @@ const ZH: Dict = {
   /* person */
   'ps.talk': '说话', 'ps.space': '空间', 'ps.gear': '关于 TA',
   'talk.note': 'TA 由 AI 依据你提供的记忆呈现，回应不代表本人。', 'talk.ph': '说点什么', 'talk.hold': '按住 说话', 'talk.release': '松开 发送',
-  'talk.slideCancel': '上滑取消', 'talk.releaseCancel': '松开取消', 'talk.generating': '正在生成', 'talk.voiceMode': '切换到语音输入',
+  'talk.slideCancel': '上滑取消', 'talk.releaseCancel': '松开取消', 'talk.typing': '正在输入…', 'talk.voiceMode': '切换到语音输入',
   'talk.keyboardMode': '切换到键盘', 'talk.more': '更多', 'talk.send': '发送',
   'act.photo': '照片', 'act.camera': '拍摄', 'act.voice': '语音通话', 'act.video': '影像', 'act.letter': '写信', 'act.keep': '珍藏记忆', 'act.gather': '围坐',
   'talk.speak': '朗读', 'talk.copy': '复制', 'talk.copied': '已复制', 'talk.remember': '珍藏', 'talk.delete': '删除', 'talk.kept': '已珍藏到 TA 的空间',
@@ -264,7 +265,7 @@ const EN: Dict = {
   'profile.space': 'Their space', 'profile.memories': 'Memories', 'profile.letters': 'Letterbox', 'profile.time': 'Time', 'profile.world': 'World',
   'profile.message': 'Message', 'profile.call': 'Voice call', 'profile.video': 'Moving photo', 'profile.more': 'About them', 'profile.reply': 'New reply',
   'profile.found': 'Connected on {date}', 'profile.view': 'View profile',
-  'auth.phone.ph': 'Phone number', 'auth.getCode': 'Get code', 'auth.apple': 'Apple', 'auth.wechat': 'WeChat',
+  'auth.phone.ph': 'Phone number', 'auth.getCode': 'Get code', 'auth.apple': 'Apple', 'auth.wechat': 'WeChat', 'auth.google': 'Google',
   'auth.agree': 'I agree to the Terms, Privacy Policy and AI Presence Notice',
   'auth.code.sentTo': 'Verify {dial} {phone}', 'auth.code.resendIn': 'Resend in {s}s', 'auth.code.resend': 'Resend',
   'auth.code.hint': 'Demo code {code}',
@@ -296,6 +297,9 @@ const EN: Dict = {
   'gather.note': "You started this gathering. Each reply is rendered by AI from that person's memories.",
   'seek.title': 'Find them', 'seek.sub': 'Memories as coordinates', 'seek.sample': 'Sample', 'seek.ai': 'They are rendered by AI from the memories you provide',
   'seek.begin': 'Begin search', 'seek.need': 'A name, plus a face or a story, to begin',
+  'seek.needStory': 'A name and one memory are enough to start.',
+  'seek.shortStory': 'Something they used to say, or a little moment you remember.',
+  'seek.personalityHints': 'Speaking clues from your story',
   'seek.node.name': 'Name', 'seek.node.face': 'Face', 'seek.node.voice': 'Voice', 'seek.node.story': 'Stories', 'seek.node.time': 'Dates', 'seek.node.place': 'Places',
   'seek.name.called': 'What you call them', 'seek.name.called.ph': 'e.g. Grandma, Yuan', 'seek.name.real': 'Full name (optional)', 'seek.name.real.ph': 'e.g. Lin Xiuying',
   'seek.face.sub': 'Pick several — any age', 'seek.face.album': 'From album', 'seek.face.samples': 'Sample album', 'seek.face.main': 'Main',
@@ -317,7 +321,7 @@ const EN: Dict = {
   'ai.body': "Elysium renders them with AI from the photos, voice and stories you provide. Their replies are generated by AI — not the person, and not a continuing consciousness. What we don't know, we leave honestly blank.",
   'ps.talk': 'Talk', 'ps.space': 'Space', 'ps.gear': 'About them',
   'talk.note': 'Rendered by AI from the memories you provide; replies are not the person.', 'talk.ph': 'Say something', 'talk.hold': 'Hold to talk', 'talk.release': 'Release to send',
-  'talk.slideCancel': 'Slide up to cancel', 'talk.releaseCancel': 'Release to cancel', 'talk.generating': 'Generating', 'talk.voiceMode': 'Voice input',
+  'talk.slideCancel': 'Slide up to cancel', 'talk.releaseCancel': 'Release to cancel', 'talk.typing': 'Typing…', 'talk.voiceMode': 'Voice input',
   'talk.keyboardMode': 'Keyboard', 'talk.more': 'More', 'talk.send': 'Send',
   'act.photo': 'Photo', 'act.camera': 'Camera', 'act.voice': 'Voice call', 'act.video': 'Moving photo', 'act.letter': 'Letter', 'act.keep': 'Keep a memory', 'act.gather': 'Gather',
   'talk.speak': 'Read aloud', 'talk.copy': 'Copy', 'talk.copied': 'Copied', 'talk.remember': 'Keep', 'talk.delete': 'Delete', 'talk.kept': 'Kept in their space',

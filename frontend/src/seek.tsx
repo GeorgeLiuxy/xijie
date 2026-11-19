@@ -8,6 +8,10 @@ import { nid, fileToDataUrl, HEADER_AVATAR, type Person } from './model'
 import { WORLDS, WorldScene } from './worlds'
 import { DeepField, Veil, Lens, ArcRing, Dust, Beacon } from './fx'
 import { I, Sheet, haptic, chime, fxPrefs, useStatusTone, NightCtx, AiBadge, type IP } from './ui'
+import { DraftFeedback, PeopleDraftSheets, usePeopleDraft, type ServiceDraft } from './auth/PeopleDraftExperience'
+import { useNativeBack } from './mobile/back'
+import {PersonVoiceInput} from './PersonVoiceInput'
+import type {PersonVoiceContext} from './model'
 import './seek-theme.css'
 import './seek-journey-theme.css'
 
@@ -43,25 +47,43 @@ const hasSeekInput = ({ d, tone, timbre, relKey, custom, calledMe }: SeekDraft) 
   [d.called, d.realName, d.story, d.birthday, d.years, d.place, custom, calledMe].some(value => !!value.trim())
   || d.faces.length > 0 || d.voice > 0 || tone !== 'gentle' || timbre !== 'warm' || relKey !== null
 type SeekProps = {
-  people: Person[]; nick: string; draftOwner?: string; large: boolean; initialStory?: string; onClose: () => void; onDone: (p: Person) => void
+  people: Person[]; nick: string; draftOwner?: string; large: boolean; initialName?: string; initialStory?: string; onClose: () => void; onDone?: (p: Person) => void; serviceDraft?: ServiceDraft
 }
 
 export function Seek(props: SeekProps) {
-  const draftKey = JSON.stringify(props.draftOwner ? ['owner', props.draftOwner] : ['nick', props.nick])
+  const draftKey = JSON.stringify(props.serviceDraft
+    ? ['service', props.serviceDraft.sessionId]
+    : props.draftOwner ? ['owner', props.draftOwner] : ['nick', props.nick])
   return <SeekFlow key={draftKey} {...props} draftKey={draftKey} />
 }
 
-function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, draftKey }: SeekProps & { draftKey: string }) {
+function SeekFlow({ people, nick, large, initialName = '', initialStory = '', onClose, onDone, draftKey, serviceDraft }: SeekProps & { draftKey: string }) {
   const { t, lang } = useI18n()
   const night = useContext(NightCtx)
+  const zh = lang.startsWith('zh')
+  const draft = usePeopleDraft(serviceDraft, onClose, initialStory, startServicePreview, initialName)
   const [restored] = useState(() => {
+    if (serviceDraft) return undefined
     const saved = seekDrafts.get(draftKey)?.value
     return saved && hasSeekInput(saved) ? saved : undefined
   })
   const draftSession = useRef<object>({})
   const completed = useRef(false)
-  const [d, setD] = useState<Draft>(() => restored?.d ?? { ...EMPTY, faces: [], story: initialStory })
+  const [prototypeDraft, setPrototypeD] = useState<Draft>(() => restored?.d ?? { ...EMPTY, faces: [], story: initialStory })
+  const d: Draft = serviceDraft ? { ...EMPTY, called: draft.fields.displayName, story: draft.fields.story,
+    voice:draft.readyVoice?Math.ceil(draft.readyVoice.durationMs/1000):0,
+    faces: draft.photoSources, realName: draft.fields.realName, birthday: draft.fields.birthMonthDay, years: draft.fields.yearsText, place: draft.fields.place,
+  } : prototypeDraft
+  const setD: React.Dispatch<React.SetStateAction<Draft>> = change => {
+    if (!serviceDraft) { setPrototypeD(change); return }
+    const next = typeof change === 'function' ? change(d) : change
+    const mapping = { called: 'displayName', realName: 'realName', story: 'story', birthday: 'birthMonthDay', years: 'yearsText', place: 'place' } as const
+    for (const key of Object.keys(mapping) as (keyof typeof mapping)[]) {
+      if (next[key] !== d[key]) draft.setField(mapping[key], next[key])
+    }
+  }
   const [sheet, setSheet] = useState<NodeKey | 'ai' | 'refine' | null>(null)
+  const voiceSubmit=useRef<(()=>Promise<boolean>)|null>(null),voiceActive=useRef(false),[voiceBusy,setVoiceBusy]=useState(false)
   const [phase, setPhase] = useState<Phase>('console')
   const [sub, setSub] = useState(0)
   const showScene = phase !== 'console' && !(phase === 'search' && sub <= 2)
@@ -84,6 +106,7 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
   const [sampleIdx, setSampleIdx] = useState(restored?.sampleIdx ?? 0)
   const [needHint, setNeedHint] = useState(false)
   const [pendingSample, setPendingSample] = useState<SeekSample | null>(null)
+  const servicePreviewAction = useRef<'begin' | 'refocus' | 'elsewhere' | 'bond'>('begin')
   const [pendingClue, setPendingClue] = useState(() => {
     const clue = initialStory.trim()
     return restored && clue && restored.d.story.trim() !== clue ? clue : null
@@ -91,11 +114,11 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
   const sampleButton = useRef<HTMLButtonElement>(null)
 
   useLayoutEffect(() => {
-    if (completed.current) return
-    const value: SeekDraft = { d, tone, timbre, mainFace, relKey, custom, calledMe, world, exclude, sampleIdx }
+    if (serviceDraft || completed.current) return
+    const value: SeekDraft = { d: prototypeDraft, tone, timbre, mainFace, relKey, custom, calledMe, world, exclude, sampleIdx }
     if (hasSeekInput(value)) seekDrafts.set(draftKey, { session: draftSession.current, value })
     else seekDrafts.delete(draftKey)
-  }, [draftKey, d, tone, timbre, mainFace, relKey, custom, calledMe, world, exclude, sampleIdx])
+  }, [serviceDraft, draftKey, prototypeDraft, tone, timbre, mainFace, relKey, custom, calledMe, world, exclude, sampleIdx])
 
   const timers = useRef<number[]>([])
   const after = (ms: number, fn: () => void) => { timers.current.push(window.setTimeout(fn, ms)) }
@@ -103,6 +126,13 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
   useEffect(() => () => { clearTimers(); window.speechSynthesis?.cancel() }, [])
 
   const rootRef = useRef<HTMLDivElement>(null)
+  useNativeBack(() => {
+    if (draft.busy || voiceActive.current || phase === 'connect') return true
+    if (phase === 'bond') setPhase('reveal')
+    else if (phase !== 'console' || launch) returnToDraft()
+    else draft.close()
+    return true
+  }, !!serviceDraft, 20, rootRef)
   const orbitRef = useRef<HTMLDivElement>(null)
   const beginRef = useRef<HTMLButtonElement>(null)
   const lensRef = useRef<HTMLSpanElement>(null)
@@ -131,21 +161,35 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
   }
   const lit = ORDER.map((k) => filled[k])
   const filledCount = lit.filter(Boolean).length
-  const canBegin = filled.name && (filled.face || filled.story)
+  const canBegin = serviceDraft ? draft.canPreview : filled.name && (filled.face || filled.story)
+  const serviceBusy = !!serviceDraft && (draft.busy || voiceBusy || !!launch)
   const withPeople = useMemo(() => people.filter((p) => p.world === world), [people, world])
   const liveKeys = useMemo(() => resonate(`${d.story}\n${d.place}`).keywords.slice(0, 3), [d.story, d.place])
-  const face = d.faces[mainFace] ?? d.faces[0]
+  const face = d.faces[serviceDraft ? 0 : mainFace] ?? d.faces[0]
   const worldName = t(`world.${world}`)
+  const suggestedPersonality = serviceDraft ? draft.journey?.preview.suggestedPersonality : undefined
+  const suggestedCatchphrase = serviceDraft ? draft.journey?.preview.suggestedCatchphrase : undefined
 
   /* ------------------------------ 坐标填写 ------------------------------ */
-  const openSheet = (k: NodeKey) => { sheetBefore.current = { ...filled }; setSheet(k) }
+  const canEditNode = (_key: NodeKey) => true
+  const openSheet = (k: NodeKey) => {
+    if (serviceBusy) return
+    sheetBefore.current = { ...filled }
+    setSheet(k)
+  }
   const closeSheet = () => {
+    if(voiceActive.current)return
     const before = sheetBefore.current; sheetBefore.current = null
     setSheet(null)
     if (!before) return
     const fresh = ORDER.filter((k) => !before[k] && filled[k])
     if (fresh.length) { setPulse(fresh); haptic(10); chime('tick'); after(1300, () => setPulse([])) }
+    if (serviceDraft && phase === 'reveal' && draft.dirty) {
+      servicePreviewAction.current = 'refocus'
+      void draft.saveDraft('preview', world)
+    }
   }
+  const completeNode=async()=>{if(serviceDraft&&sheet==='voice'){if(!voiceSubmit.current||!await voiceSubmit.current())return}closeSheet()}
   const fillSample = (s: SeekSample) => {
     setPendingSample(null)
     setSampleIdx((i) => i + 1)
@@ -186,7 +230,7 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
     if (!keepWorld) setWorld(r.world)
     const kws = r.keywords.length ? r.keywords : ORDER.filter((k) => k !== 'name' && filled[k]).map((k) => t(`seek.node.${k}`))
     setKeywords(kws)
-    setLine(firstLine(lang, { keywords: r.keywords, catchphrase: parseStory(d.story).catchphrase, tone }))
+    setLine(serviceDraft ? Array.from(d.story).slice(0, 160).join('') + (Array.from(d.story).length > 160 ? '…' : '') : firstLine(lang, { keywords: r.keywords, catchphrase: parseStory(d.story).catchphrase, tone }))
   }
 
   /* ------------------------------ 穿越时间线 ------------------------------ */
@@ -209,9 +253,34 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
     }
   }
   const begin = () => {
-    if (!canBegin) { setNeedHint(true); haptic(24); after(1200, () => setNeedHint(false)); return }
+    if (!canBegin) {
+      if (serviceDraft) openSheet(filled.name ? 'story' : 'name')
+      else { setNeedHint(true); haptic(24); after(1200, () => setNeedHint(false)) }
+      return
+    }
+    if (serviceDraft) { servicePreviewAction.current = 'begin'; void draft.saveDraft('preview', computeResonance(exclude).world); return }
     applyResonance(computeResonance(exclude))
     if (!relKey) { const rk = relKeyOf(d.called); if (rk) setRelKey(rk) }
+    launchSearch()
+  }
+  function startServicePreview(selectedWorld: WorldId) {
+    applyResonance({ ...computeResonance(exclude), world: selectedWorld })
+    if (!relKey) { const rk = relKeyOf(d.called); if (rk) setRelKey(rk) }
+    const action = servicePreviewAction.current
+    servicePreviewAction.current = 'begin'
+    if (action === 'refocus') { setFocusKey(key => key + 1); haptic(8) }
+    else if (action === 'elsewhere') runSearch(2)
+    else if (action === 'bond') { setPhase('bond'); if (!calledMe) setCalledMe(calledDefault(lang, relKey ?? relKeyOf(d.called), nick)); haptic(8) }
+    else runSearch(0)
+  }
+  function returnToDraft() {
+    clearTimers()
+    setLaunch(null)
+    setPhase('console')
+    draft.closePreview()
+    requestAnimationFrame(() => beginRef.current?.focus({ preventScroll: true }))
+  }
+  function launchSearch() {
     haptic(10)
     const root = rootRef.current?.getBoundingClientRect(); const b = beginRef.current?.getBoundingClientRect(); const o = orbitRef.current?.getBoundingClientRect()
     if (root && b && o && !fxPrefs.calm) {
@@ -231,10 +300,11 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
       id = window.setInterval(() => { i++; setTyped(i); if (i >= line.length) clearInterval(id) }, 60)
     }, fxPrefs.calm ? 0 : 420)
     return () => { clearTimeout(start); clearInterval(id) }
-  }, [phase, line, focusKey])
+  }, [phase, line, focusKey, serviceDraft])
 
   const refocus = () => {
     setSheet(null)
+    if (serviceDraft) { servicePreviewAction.current = 'refocus'; void draft.saveDraft('preview', world); return }
     applyResonance(computeResonance(exclude), true)
     setFocusKey((k) => k + 1); haptic(8)
   }
@@ -243,6 +313,7 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
     const ex = [...new Set([...exclude, world])]
     const next = ex.length >= WORLD_IDS.length ? [world] : ex
     setExclude(next)
+    if (serviceDraft) { servicePreviewAction.current = 'elsewhere'; void draft.saveDraft('preview', computeResonance(next).world); return }
     applyResonance(computeResonance(next))
     runSearch(2)
   }
@@ -254,6 +325,7 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
     } catch { /* 原型环境可能不支持 */ }
   }
   const like = () => {
+    if (serviceDraft && draft.dirty) { servicePreviewAction.current = 'bond'; void draft.saveDraft('preview', world); return }
     setPhase('bond'); haptic(8)
     if (!calledMe) setCalledMe(calledDefault(lang, relKey ?? relKeyOf(d.called), nick))
   }
@@ -274,12 +346,21 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
     }
   }
   const connect = () => {
+    if (serviceDraft) {
+      draft.confirmPreview((person, selectedWorld) => animateConnection(() => {
+        if (serviceDraft.onConfirmed) serviceDraft.onConfirmed(person, selectedWorld)
+        else onClose()
+      }), returnToDraft, { relationship: relKey === 'custom' ? custom.trim() || d.called.trim() : t(`rel.${relKey}`), calledMe: calledMe.trim() || null })
+      return
+    }
     const person = finish()
-    const done = () => {
+    animateConnection(() => {
       completed.current = true
       if (seekDrafts.get(draftKey)?.session === draftSession.current) seekDrafts.delete(draftKey)
-      onDone(person)
-    }
+      onDone?.(person)
+    })
+  }
+  function animateConnection(done: () => void) {
     setPhase('connect'); haptic([10, 40, 20]); chime('connect')
     const el = lensRef.current; const root = rootRef.current
     if (el && root && !fxPrefs.calm) {
@@ -309,10 +390,17 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
 
       {/* ------------------------- 第一幕：坐标台 ------------------------- */}
       {showOrbit && (
-        <div className={`seek-console absolute inset-0 flex flex-col transition-opacity duration-500 ${phase === 'search' ? 'pointer-events-none' : ''}`}>
+        <div inert={phase === 'search' || !!serviceDraft && (!!sheet || draft.hasLayer)}
+          className={`seek-console absolute inset-0 flex flex-col transition-opacity duration-500 ${phase === 'search' ? 'pointer-events-none' : ''}`}>
           <div className={`pt-[calc(var(--app-status-height)+8px)] px-5 flex items-center justify-between transition-opacity duration-500 ${phase === 'search' ? 'opacity-0' : ''}`}>
-            <button onClick={onClose} aria-label={t('common.close')} className="seek-console-control h-10 w-10 flex items-center justify-center rounded-full active:scale-95 transition-transform"><I.X className="h-5 w-5" /></button>
-            <button ref={sampleButton} onClick={requestSample} className="seek-console-control h-9 rounded-full px-4 text-[13px] active:scale-95 transition-transform">{t('seek.sample')}</button>
+            <button onClick={serviceDraft ? draft.close : onClose} disabled={serviceBusy} aria-label={t('common.close')} className="seek-console-control h-10 w-10 flex items-center justify-center rounded-full active:scale-95 transition-transform"><I.X className="h-5 w-5" /></button>
+            <div className="flex items-center gap-1.5">
+              {serviceDraft ? <>
+                <button type="button" onClick={() => draft.openPicker()} disabled={serviceBusy} aria-haspopup="dialog"
+                  className="seek-console-control min-h-11 rounded-full px-4 text-[13px] active:scale-95 transition-transform">{zh ? '草稿' : 'Drafts'}</button>
+                <span className="seek-console-muted px-2 text-[12px]">{zh ? '示例仅供演示' : 'Samples are preview-only'}</span>
+              </> : <button ref={sampleButton} onClick={requestSample} className="seek-console-control h-9 rounded-full px-4 text-[13px] active:scale-95 transition-transform">{t('seek.sample')}</button>}
+            </div>
           </div>
           <div className={`mt-3 text-center transition-all duration-500 ${phase === 'search' ? 'opacity-0 -translate-y-3' : 'rise-in'}`}>
             <h1 className="font-serif text-[30px] tracking-[0.22em] pl-[0.22em]">{t('seek.title')}</h1>
@@ -325,7 +413,7 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
                 {ORDER.map((k) => {
                   const n = NODES.find((x) => x.key === k)!
                   return (
-                    <button key={k} onClick={() => openSheet(k)} data-filled={filled[k]} className="seek-console-control w-full flex items-center gap-3.5 rounded-2xl px-4 py-4 text-left">
+                    <button key={k} onClick={() => openSheet(k)} disabled={!canEditNode(k) || serviceBusy} data-filled={filled[k]} className="seek-console-control w-full flex items-center gap-3.5 rounded-2xl px-4 py-4 text-left disabled:opacity-50">
                       <n.icon className="h-6 w-6" />
                       <span className="flex-1 text-[18px]">{t(`seek.node.${k}`)}</span>
                       {filled[k] ? <I.Check className="h-5 w-5" /> : <I.Chevron className="seek-console-muted h-5 w-5" />}
@@ -398,7 +486,8 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
                   const p = nodePos(n.a); const on = filled[n.key]; const fresh = pulse.includes(n.key)
                   return (
                     <button key={n.key} onClick={() => phase === 'console' && openSheet(n.key)} aria-label={t(`seek.node.${n.key}`)}
-                      data-filled={on} className={`seek-orbit-node absolute flex flex-col items-center transition-opacity duration-500 ${phase === 'search' ? (sub === 0 ? 'opacity-70' : 'opacity-0') : ''}`}
+                      disabled={!canEditNode(n.key) || serviceBusy}
+                      data-filled={on} className={`seek-orbit-node absolute flex flex-col items-center transition-opacity duration-500 disabled:opacity-50 ${phase === 'search' ? (sub === 0 ? 'opacity-70' : 'opacity-0') : ''}`}
                       style={{ left: p.x - 29, top: p.y - 29, width: 58 }}>
                       <span data-filled={on} className={`seek-console-control relative h-[58px] w-[58px] rounded-full flex items-center justify-center transition-all duration-500 ${fresh ? 'pop-in' : ''}`}>
                         <n.icon className="h-[22px] w-[22px]" />
@@ -419,8 +508,10 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
             <p className="seek-console-muted text-center text-[12.5px]">
               {t('seek.ai')} · <button onClick={() => setSheet('ai')} className="seek-console-link underline underline-offset-2">{t('common.learn')}</button>
             </p>
-            <button ref={beginRef} onClick={begin} data-ready={canBegin} className="seek-console-start mt-4 w-full h-14 rounded-full text-[17px] font-semibold tracking-[0.08em] transition-[background-color,color,box-shadow,transform] active:scale-[0.98]">{t('seek.begin')}</button>
-            <p className={`seek-console-muted mt-2.5 h-4 text-center text-[12.5px] ${needHint ? 'glow-hint' : ''}`}>{canBegin ? '' : t('seek.need')}</p>
+            <button ref={beginRef} onClick={begin} disabled={serviceBusy || !!serviceDraft && draft.conflict} data-ready={canBegin} className="seek-console-start mt-4 w-full h-14 rounded-full text-[17px] font-semibold tracking-[0.08em] transition-[background-color,color,box-shadow,transform] active:scale-[0.98]">{draft.busy ? (zh ? '正在寻找…' : 'Searching…') : t('seek.begin')}</button>
+            <div className={`seek-console-muted mt-2.5 min-h-4 text-center text-[12.5px] ${needHint ? 'glow-hint' : ''}`}>
+              {serviceDraft && draft.feedback && !draft.hasLayer ? <DraftFeedback feedback={draft.feedback} /> : canBegin ? '' : t(serviceDraft ? 'seek.needStory' : 'seek.need')}
+            </div>
           </div>
         </div>
       )}
@@ -453,7 +544,9 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
 
           <div className={`absolute inset-0 z-10 flex flex-col items-center ${phase === 'reveal' ? 'overflow-y-auto scroll-quiet' : ''}`}>
             <div className={`pt-[62px] text-center transition-opacity duration-500 ${phase === 'search' && sub < 4 ? 'opacity-0' : phase === 'connect' ? 'opacity-0' : 'opacity-100'}`}>
-              <div className="font-mono text-[10.5px] tracking-[0.24em]">{t('seek.resonance', { world: worldName })} · {WORLDS[world].code}</div>
+              <div className="font-mono text-[10.5px] tracking-[0.24em]">
+                {t('seek.resonance', { world: worldName })} · {WORLDS[world].code}
+              </div>
               {withPeople.length > 0 && <div className="mt-1.5 font-serif text-[15px]">{t('seek.with', { names: withPeople.map((p) => p.name).join('、') })}</div>}
             </div>
 
@@ -479,10 +572,20 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
             </div>
 
             <div className={`w-full flex flex-col items-center transition-opacity duration-300 ${phase === 'reveal' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-              <div className="mt-3 text-[13.5px] tracking-[0.18em] text-ink-soft">{keywords.join(' · ')}</div>
-              <p className="mt-5 px-10 min-h-[58px] text-center font-serif italic text-[19px] leading-relaxed">
-                “{line.slice(0, phase === 'reveal' ? typed : line.length)}{phase === 'reveal' && typed < line.length && <span className="caret ml-0.5 inline-block h-[1em] w-px bg-ink align-middle" />}”
-              </p>
+                <div className="mt-3 text-[13.5px] tracking-[0.18em] text-ink-soft">{keywords.join(' · ')}</div>
+                <p className="mt-5 px-10 min-h-[58px] text-center font-serif italic text-[19px] leading-relaxed">
+                  “{line.slice(0, phase === 'reveal' ? typed : line.length)}{phase === 'reveal' && typed < line.length && <span className="caret ml-0.5 inline-block h-[1em] w-px bg-ink align-middle" />}”
+                </p>
+
+              {phase === 'reveal' && (!!suggestedPersonality?.length || !!suggestedCatchphrase) && (
+                <details className="mt-2 w-full max-w-sm px-7 text-[13px] leading-relaxed text-ink-soft">
+                  <summary className="mx-auto min-h-11 w-fit cursor-pointer py-3">{t('seek.personalityHints')}</summary>
+                  <ul className="space-y-1 pb-2 pl-5 list-disc [overflow-wrap:anywhere]">
+                    {suggestedPersonality?.map(trait => <li key={trait}>{trait}</li>)}
+                    {suggestedCatchphrase && <li>{t('seek.story.p1')} · “{suggestedCatchphrase}”</li>}
+                  </ul>
+                </details>
+              )}
               {d.voice > 0 && (
                 <button onClick={speakLine} className="seek-chip mt-2 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12.5px] active:scale-95 transition-transform">
                   <I.Play className="h-3 w-3 text-sky-deep" />{t('seek.listen')}<span className="text-ink-soft">· {t('seek.synth')}</span>
@@ -494,8 +597,9 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
 
             {phase === 'reveal' && (
               <div className="seek-reveal-actions w-full shrink-0 px-7 pb-9 rise-in" style={{ animationDelay: '0.5s' }}>
-                <button onClick={like} className="seek-journey-action w-full h-14 rounded-full text-[17px] font-semibold tracking-[0.1em] active:scale-[0.98] transition-transform">{t('seek.like')}</button>
-                <button onClick={() => setSheet('refine')} className="mt-2 w-full py-2.5 text-[15px] text-ink">{t('seek.refine')}</button>
+                {serviceDraft && <DraftFeedback feedback={draft.feedback} />}
+                <button onClick={like} disabled={serviceBusy} className="seek-journey-action w-full h-14 rounded-full text-[17px] font-semibold tracking-[0.1em] active:scale-[0.98] transition-transform">{t('seek.like')}</button>
+                <button onClick={() => setSheet('refine')} disabled={serviceBusy} className="mt-2 w-full py-2.5 text-[15px] text-ink">{t('seek.refine')}</button>
               </div>
             )}
           </div>
@@ -509,16 +613,17 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {relKeys(lang).map((k) => (
-                  <button key={k} onClick={() => { setRelKey(k); setCalledMe(calledDefault(lang, k, nick)); haptic(6) }} aria-pressed={relKey === k}
+                  <button key={k} disabled={serviceBusy || !!serviceDraft && draft.confirmationAttempted} onClick={() => { setRelKey(k); setCalledMe(calledDefault(lang, k, nick)); haptic(6) }} aria-pressed={relKey === k}
                     className="seek-chip rounded-full px-3.5 py-2 text-[14.5px] transition-colors">{t(`rel.${k}`)}</button>
                 ))}
               </div>
-              {relKey === 'custom' && <input value={custom} onChange={(e) => setCustom(e.target.value.slice(0, 10))} placeholder={t('bond.custom.ph')} className={`mt-3 ${field}`} />}
+              {relKey === 'custom' && <input readOnly={serviceBusy || !!serviceDraft && draft.confirmationAttempted} value={custom} onChange={(e) => setCustom(e.target.value.slice(0, 10))} placeholder={t('bond.custom.ph')} className={`mt-3 ${field}`} />}
               <label className="mt-5 block">
                 <span className="text-[12.5px] tracking-[0.16em] text-ink-soft">{t('bond.called')}</span>
-                <input value={calledMe} onChange={(e) => setCalledMe(e.target.value.slice(0, 12))} className={`mt-2.5 ${field}`} />
+                <input readOnly={serviceBusy || !!serviceDraft && draft.confirmationAttempted} value={calledMe} onChange={(e) => setCalledMe(e.target.value.slice(0, 12))} className={`mt-2.5 ${field}`} />
               </label>
-              <button onClick={connect} disabled={!relKey} className="seek-journey-action mt-6 w-full h-14 rounded-full text-[17px] font-semibold tracking-[0.1em] active:scale-[0.98] transition-all">{t('bond.add')}</button>
+              {serviceDraft && <DraftFeedback feedback={draft.feedback} />}
+              <button onClick={connect} disabled={!relKey || serviceBusy} className="seek-journey-action mt-6 w-full h-14 rounded-full text-[17px] font-semibold tracking-[0.1em] active:scale-[0.98] transition-all">{t('bond.add')}</button>
             </div>
           )}
 
@@ -534,7 +639,7 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
       )}
 
       {phase === 'search' && (
-        <button onClick={skip} className="seek-scene-tag absolute right-5 top-[calc(var(--app-status-height)+10px)] z-30 rounded-full px-3.5 py-1.5 text-[12px]">{t('seek.skip')}</button>
+        <button onClick={skip} className="seek-scene-tag absolute right-5 top-[calc(var(--app-status-height)+10px)] z-30 min-h-11 rounded-full px-3.5 py-1.5 text-[12px]">{t('seek.skip')}</button>
       )}
 
       {/* ------------------------------ 面板 ------------------------------ */}
@@ -566,29 +671,29 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
       )}
       {sheet && sheet !== 'ai' && sheet !== 'refine' && (
         <Sheet dark={night} onClose={closeSheet} title={t(`seek.node.${sheet}`)}
-          footer={<button onClick={closeSheet} className="w-full h-13 py-3.5 rounded-full btn-dark text-[16px] font-semibold active:scale-[0.98] transition-transform">{t('common.done')}</button>}>
-          <NodeEditor k={sheet} d={d} setD={setD} mainFace={mainFace} setMainFace={setMainFace} />
+          footer={<button onClick={()=>void completeNode()} disabled={serviceBusy} className="w-full h-13 py-3.5 rounded-full btn-dark text-[16px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-50">{t('common.done')}</button>}>
+          <NodeEditor k={sheet} d={d} setD={setD} mainFace={mainFace} setMainFace={setMainFace} service={serviceDraft ? draft : undefined} voiceOwner={serviceDraft} voiceSubmit={voiceSubmit} onVoiceBusy={value=>{voiceActive.current=value;setVoiceBusy(value)}} />
         </Sheet>
       )}
       {sheet === 'refine' && (
         <Sheet dark={night} onClose={() => setSheet(null)} title={t('seek.refine')}
-          footer={<button onClick={refocus} className="seek-journey-action w-full py-3.5 rounded-full text-[16px] font-semibold active:scale-[0.98] transition-transform">{t('refine.apply')}</button>}>
+          footer={<button onClick={refocus} disabled={serviceBusy} className="seek-journey-action w-full py-3.5 rounded-full text-[16px] font-semibold active:scale-[0.98] transition-transform">{t('refine.apply')}</button>}>
           <RefineBlock title={t('refine.face')}>
             <div className="flex gap-3 overflow-x-auto scroll-quiet pb-1">
               {d.faces.map((f, i) => (
-                <button key={f + i} onClick={() => setMainFace(i)} data-selected={i === mainFace} className="seek-face-option h-16 w-16 shrink-0 rounded-full overflow-hidden transition-all"><img src={f} alt="" className="h-full w-full object-cover" /></button>
+                <button key={f + i} aria-label={zh ? `使用第${i + 1}张作为头像` : `Use photo ${i + 1} as portrait`} onClick={() => serviceDraft ? draft.mainPhoto(i) : setMainFace(i)} data-selected={i === (serviceDraft ? 0 : mainFace)} className="seek-face-option h-16 w-16 shrink-0 rounded-full overflow-hidden transition-all">{f ? <img src={f} alt="" className="h-full w-full object-cover" /> : <I.Photo className="mx-auto h-5 w-5" />}</button>
               ))}
               <button onClick={() => openSheet('face')} className="seek-panel-control h-16 w-16 shrink-0 rounded-full flex items-center justify-center"><I.Plus className="h-6 w-6" /></button>
             </div>
           </RefineBlock>
           <RefineBlock title={t('refine.voice')}>
             <div className="flex flex-wrap gap-2">
-              {(['warm', 'bright', 'deep'] as const).map((k) => <Chip key={k} on={timbre === k} onClick={() => setTimbre(k)}>{t(`refine.timbre.${k}`)}</Chip>)}
+              {(['warm', 'bright', 'deep'] as const).map((k) => <Chip key={k} on={(serviceDraft?draft.voiceTimbre:timbre) === k} onClick={() => serviceDraft ? draft.setVoiceTimbre(k) : setTimbre(k)}>{t(`refine.timbre.${k}`)}</Chip>)}
               <Chip onClick={() => openSheet('voice')}>{t('refine.voice.more')}</Chip>
             </div>
           </RefineBlock>
           <RefineBlock title={t('refine.tone')}>
-            <div className="flex flex-wrap gap-2">{TONES.map((k) => <Chip key={k} on={tone === k} onClick={() => setTone(k)}>{t(`tone.${k}`)}</Chip>)}</div>
+            <div className="flex flex-wrap gap-2">{TONES.map((k) => <Chip key={k} on={(serviceDraft?draft.conversationTone:tone) === k} onClick={() => serviceDraft ? draft.setConversationTone(k) : setTone(k)}>{t(`tone.${k}`)}</Chip>)}</div>
           </RefineBlock>
           <RefineBlock title={t('refine.memory')}>
             <Chip onClick={() => openSheet('story')}>{t('refine.memory.more')}</Chip>
@@ -602,6 +707,7 @@ function SeekFlow({ people, nick, large, initialStory = '', onClose, onDone, dra
           </RefineBlock>
         </Sheet>
       )}
+      {serviceDraft && <PeopleDraftSheets draft={draft} night={night} />}
     </div>
   )
 }
@@ -642,8 +748,13 @@ function Tunnel({ world, t, night }: { world: WorldId; t: (k: string, p?: Record
 
 /* ----------------------------- 坐标编辑器 ----------------------------- */
 const field = 'seek-field w-full rounded-2xl px-4 py-3.5 text-[16.5px] outline-none transition-shadow'
-function NodeEditor({ k, d, setD, mainFace, setMainFace }: { k: NodeKey; d: Draft; setD: React.Dispatch<React.SetStateAction<Draft>>; mainFace: number; setMainFace: (i: number) => void }) {
+function NodeEditor({ k, d, setD, mainFace, setMainFace, service,voiceOwner,voiceSubmit,onVoiceBusy }: {
+  k: NodeKey; d: Draft; setD: React.Dispatch<React.SetStateAction<Draft>>; mainFace: number; setMainFace: (i: number) => void
+  service?: Pick<ReturnType<typeof usePeopleDraft>, 'fields' | 'setField' | 'photos' | 'photoSources' | 'addPhotos' | 'removePhoto' | 'mainPhoto' | 'feedback' | 'busy'|'voiceContext'|'readyVoice'|'ensureVoiceTarget'|'bindVoice'>
+  voiceOwner?:Omit<PersonVoiceContext,'draftId'>;voiceSubmit?:React.MutableRefObject<(()=>Promise<boolean>)|null>;onVoiceBusy?:(busy:boolean)=>void
+}) {
   const { t, lang } = useI18n()
+  const zh = lang.startsWith('zh')
   const set = (patch: Partial<Draft>) => setD((x) => ({ ...x, ...patch }))
   const [rec, setRec] = useState(0)
   const [recording, setRecording] = useState(false)
@@ -655,7 +766,7 @@ function NodeEditor({ k, d, setD, mainFace, setMainFace }: { k: NodeKey; d: Draf
   if (k === 'name') return (
     <div className="space-y-4">
       <label className="block"><span className="text-[12.5px] tracking-[0.12em] text-ink-soft">{t('seek.name.called')}</span>
-        <input autoFocus value={d.called} onChange={(e) => set({ called: e.target.value.slice(0, 10) })} placeholder={t('seek.name.called.ph')} className={`mt-2 ${field}`} /></label>
+        <input autoFocus value={d.called} onChange={(e) => service ? service.setField('displayName', e.target.value.slice(0, 10)) : set({ called: e.target.value.slice(0, 10) })} placeholder={t('seek.name.called.ph')} className={`mt-2 ${field}`} /></label>
       <label className="block"><span className="text-[12.5px] tracking-[0.12em] text-ink-soft">{t('seek.name.real')}</span>
         <input value={d.realName} onChange={(e) => set({ realName: e.target.value.slice(0, 20) })} placeholder={t('seek.name.real.ph')} className={`mt-2 ${field}`} /></label>
     </div>
@@ -669,6 +780,7 @@ function NodeEditor({ k, d, setD, mainFace, setMainFace }: { k: NodeKey; d: Draf
     })
     const upload = async (files: FileList | null) => {
       if (!files) return
+      if (service) { await service.addPhotos(Array.from(files)); return }
       const urls: string[] = []
       for (const f of Array.from(files).slice(0, 6)) { try { urls.push(await fileToDataUrl(f)) } catch { /* 跳过无法读取的文件 */ } }
       setD((x) => ({ ...x, faces: [...x.faces, ...urls].slice(0, 6) }))
@@ -679,12 +791,13 @@ function NodeEditor({ k, d, setD, mainFace, setMainFace }: { k: NodeKey; d: Draf
         <div className="mt-4 grid grid-cols-4 gap-3">
           <label className="seek-panel-control aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition-transform">
             <I.Photo className="h-6 w-6" /><span className="text-[10.5px]">{t('seek.face.album')}</span>
-            <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => upload(e.target.files)} />
+            <input type="file" accept={service ? "image/jpeg,image/png,image/webp" : "image/*"} multiple disabled={service?.busy} className="hidden" onChange={(e) => { void upload(e.target.files); e.target.value = '' }} />
           </label>
-          {d.faces.filter((f) => !FACE_ALBUM.some((a) => a.src === f)).map((f) => (
-            <button key={f.slice(-24)} onClick={() => toggle(f)} data-selected="true" className="seek-face-option relative aspect-square rounded-2xl overflow-hidden"><img src={f} alt="" className="h-full w-full object-cover" /></button>
+          {service ? service.photos.map((photo, index) => <button type="button" key={typeof photo === 'string' ? photo.slice(-24) + index : photo.id} disabled={service.busy} aria-label={zh ? `移除第${index + 1}张照片` : `Remove photo ${index + 1}`} onClick={() => service.removePhoto(index)} data-selected="true" className="seek-face-option relative aspect-square rounded-2xl overflow-hidden">{d.faces[index] ? <img src={d.faces[index]} alt="" className="h-full w-full object-cover" /> : <I.Photo className="mx-auto h-6 w-6" />}<span className="absolute right-1 top-1 rounded-full bg-paper px-1 text-xs">×</span></button>) : d.faces.filter((f) => !FACE_ALBUM.some((a) => a.src === f)).map((f) => (
+            <button key={f.slice(-24)} onClick={() => toggle(f)} data-selected="true" className="seek-face-option relative aspect-square rounded-2xl overflow-hidden">{f ? <img src={f} alt="" className="h-full w-full object-cover" /> : <I.Photo className="mx-auto h-5 w-5" />}</button>
           ))}
           {FACE_ALBUM.map((a) => {
+            if (service) return <img key={a.src} src={a.src} alt="" className="aspect-square w-full rounded-2xl object-cover opacity-60" />
             const idx = d.faces.indexOf(a.src)
             return (
               <button key={a.src} onClick={() => toggle(a.src, a.age)} data-selected={idx >= 0} className={`seek-face-option relative aspect-square rounded-2xl overflow-hidden transition-opacity ${idx < 0 ? 'opacity-80' : ''}`}>
@@ -697,15 +810,17 @@ function NodeEditor({ k, d, setD, mainFace, setMainFace }: { k: NodeKey; d: Draf
         {d.faces.length > 1 && (
           <div className="mt-5">
             <div className="text-[12.5px] tracking-[0.12em] text-ink-soft">{t('seek.face.main')}</div>
-            <div className="mt-2 flex gap-2.5">{d.faces.map((f, i) => <button key={f.slice(-24) + i} onClick={() => setMainFace(i)} data-selected={i === mainFace} className="seek-face-option h-12 w-12 rounded-full overflow-hidden"><img src={f} alt="" className="h-full w-full object-cover" /></button>)}</div>
+            <div className="mt-2 flex gap-2.5">{d.faces.map((f, i) => <button key={f.slice(-24) + i} aria-label={zh ? `使用第${i + 1}张作为头像` : `Use photo ${i + 1} as portrait`} onClick={() => service ? service.mainPhoto(i) : setMainFace(i)} data-selected={i === (service ? 0 : mainFace)} className="seek-face-option h-12 w-12 rounded-full overflow-hidden">{f ? <img src={f} alt="" className="h-full w-full object-cover" /> : <I.Photo className="mx-auto h-5 w-5" />}</button>)}</div>
           </div>
         )}
-        <p className="mt-4 text-[11.5px] text-ink-soft">{t('seek.face.samples')}</p>
+        <p className="mt-4 text-[11.5px] text-ink-soft">{service ? zh ? '示例照片仅供预览。可从相册添加自己的照片。' : 'Sample photos are for preview. Add your own from your album.' : t('seek.face.samples')}</p>
+        {service && <DraftFeedback feedback={service.feedback} />}
       </div>
     )
   }
 
   if (k === 'voice') {
+    if(service)return voiceOwner?<PersonVoiceInput context={voiceOwner} targetId={service.voiceContext?.draftId} readyVoice={service.readyVoice} ensureTarget={service.ensureVoiceTarget} onBind={service.bindVoice} submitRef={voiceSubmit} onBusy={onVoiceBusy}/>:<p>{zh?'声音暂时无法保存，请重新登录后再试。':'Voice storage is unavailable. Sign in again and retry.'}</p>
     const start = () => { setRec(0); setRecording(true); clearInterval(recT.current); recT.current = window.setInterval(() => setRec((s) => s + 1), 1000); haptic(8) }
     const stop = () => {
       if (!recording) return
@@ -737,8 +852,9 @@ function NodeEditor({ k, d, setD, mainFace, setMainFace }: { k: NodeKey; d: Draf
   }
 
   if (k === 'story') {
-    const prompts = ['p1', 'p2', 'p3', 'p4'].map((p) => t(`seek.story.${p}`))
-    const insert = (label: string) => setD((x) => ({ ...x, story: `${x.story}${x.story && !x.story.endsWith('\n') ? '\n' : ''}${label}：` }))
+    const insert = (label: string) => {
+      setD((x) => ({ ...x, story: `${x.story}${x.story && !x.story.endsWith('\n') ? '\n' : ''}${label}：` }))
+    }
     const dictate = () => {
       const W = window as unknown as { SpeechRecognition?: new () => SpeechRec; webkitSpeechRecognition?: new () => SpeechRec }
       const SR = W.SpeechRecognition || W.webkitSpeechRecognition
@@ -759,11 +875,17 @@ function NodeEditor({ k, d, setD, mainFace, setMainFace }: { k: NodeKey; d: Draf
     }
     return (
       <div>
-        <div className="flex flex-wrap gap-2">{prompts.map((p) => <Chip key={p} onClick={() => insert(p)}>{p}</Chip>)}</div>
-        <textarea autoFocus value={d.story} onChange={(e) => set({ story: e.target.value.slice(0, 600) })} rows={7} placeholder={t('seek.story.ph')} className={`mt-4 resize-none leading-relaxed ${field}`} />
-        <button onClick={dictate} aria-pressed={listening} className="seek-chip mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13.5px] transition-colors">
+        {!service && <div className="mb-4 flex flex-wrap gap-2">{['p1', 'p2', 'p3', 'p4'].map(key => {
+          const label = t(`seek.story.${key}`)
+          return <Chip key={key} onClick={() => insert(label)}>{label}</Chip>
+        })}</div>}
+        <textarea autoFocus value={d.story} onChange={(e) => service ? service.setField('story', e.target.value.slice(0, 600)) : set({ story: e.target.value.slice(0, 600) })}
+          aria-label={service ? t('seek.node.story') : undefined} rows={service ? 4 : 7} placeholder={t(service ? 'seek.shortStory' : 'seek.story.ph')} className={`resize-none leading-relaxed ${field}`} />
+        {service ? <p className="mt-3 flex items-center gap-2 text-[12px] text-ink-soft">
+          <I.MicOff className="h-4 w-4 shrink-0" />{zh ? '口述暂未开放，可以直接输入。' : 'Dictation is unavailable. You can type your story.'}
+        </p> : <button onClick={dictate} aria-pressed={listening} className="seek-chip mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13.5px] transition-colors">
           <I.Mic className="h-4 w-4" />{listening ? t('seek.story.listening') : t('seek.story.dictate')}
-        </button>
+        </button>}
       </div>
     )
   }

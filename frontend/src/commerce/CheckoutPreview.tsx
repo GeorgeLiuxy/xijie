@@ -8,6 +8,8 @@ import {
   type CheckoutStatus, type PaymentMethod, type PreviewChannel, type PreviewOrder,
 } from './preview'
 import './checkout-preview.css'
+import { ServiceCheckout } from './ServiceCheckoutSheet'
+import type { OrderServiceContext } from './serviceOrders'
 
 const channels = {
   mainland: ['中国大陆 Android / 网页', 'Mainland China Android / Web'],
@@ -35,7 +37,20 @@ const statusLabels = {
 
 type View = { kind: 'purchase' | 'orders' } | { kind: 'detail'; id: string }
 
-export function CheckoutPreview({ owner, initialView, onClose }: {
+export function CheckoutPreview(props: {
+  owner: string
+  initialView: 'purchase' | 'orders'
+  onClose: () => void
+  serviceContext?: OrderServiceContext
+  onUnavailable?: () => void
+  onChanged?: () => void
+}) {
+  return props.serviceContext
+    ? <ServiceCheckout key={props.serviceContext.accountId + ':' + props.serviceContext.sessionId} context={props.serviceContext} initialView={props.initialView} onClose={props.onClose} onChanged={props.onChanged} />
+    : <PreviewCheckoutContent owner={props.owner} initialView={props.initialView} onClose={props.onClose} />
+}
+
+function PreviewCheckoutContent({ owner, initialView, onClose }: {
   owner: string
   initialView: 'purchase' | 'orders'
   onClose: () => void

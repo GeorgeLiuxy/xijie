@@ -13,7 +13,8 @@ export function decoration(gift: GiftDefinition): [Zone, Shape] | null {
     case 'sun-mat': return ['seat', 'mat']
     case 'star-lamp':
     case 'path-lamp':
-    case 'beacon': return ['door', 'lantern']
+    case 'beacon':
+    case 'blessing-river-lantern': return ['door', 'lantern']
     default: return gift.effect === 'prop' && gift.render === 'plant' && gift.id !== 'feather'
       ? ['flowers', 'plant'] : null
   }
@@ -24,5 +25,5 @@ export function canPlaceGift(gift: GiftDefinition): boolean {
 }
 
 export function canDisplayReceivedGift(gift: ReceivedGift): boolean {
-  return gift.lines.length > 0 && gift.lines.every(line => line.quantity > 0 && canPlaceGift(line.snapshot))
+  return gift.displayable !== false && gift.lines.length > 0 && gift.lines.every(line => line.quantity > 0 && canPlaceGift(line.snapshot))
 }

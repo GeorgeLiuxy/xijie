@@ -322,7 +322,7 @@ function Station() {
     <p className="rw-notice" role="status">
       {notice ||
         (failed
-          ? msg("连接中断，正在重新核对航班。", "Reconnecting to flight.")
+          ? msg("连接中断，正在恢复旅途进度。", "Reconnecting to flight.")
           : null)}
     </p>
   )

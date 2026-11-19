@@ -1,9 +1,12 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Bell, Gift, MagnifyingGlass, Planet, Sparkle, Ticket, UserPlus } from '@phosphor-icons/react'
-import { conversationRows } from './conversationList'
+import { conversationRows, serviceConversationRows } from './conversationList'
+import { useConversationSearch, type ConversationAnchor, type SearchSession } from './serviceConversationSearch'
+import { useUnreadLetterReply, type ConversationSummary } from './serviceConversations'
+import { readConversationWorlds, type WorldCard } from './servicePeople'
 import { useHomeGiftActivity } from './gifts/GiftActivity'
 import { Lens } from './fx'
-import { WORLD_IDS, isZh, useI18n, type WorldId } from './i18n'
+import { WORLD_IDS, fmtTime, isZh, useI18n, type WorldId } from './i18n'
 import type { Chats, Person } from './model'
 import { I, NightCtx, haptic, useStatusTone } from './ui'
 import { useNativeBack } from './mobile/back'
@@ -28,18 +31,28 @@ const recommendations = {
 type HomeProps = {
   people: Person[]
   chats: Chats
+  serviceAccount?: boolean
+  conversationSummaries?: ConversationSummary[]
+  conversationWorlds?: WorldCard[]
+  searchSession?: SearchSession
+  peopleLoad?: 'loading' | 'ready' | 'error'
+  onRetryPeople?: () => void
+  canSeek?: boolean
   giftOwner: string
   query: string
   onQuery: (value: string) => void
-  onOpen: (id: number, messageId?: number) => void
-  onGather: (world: WorldId, messageId?: number) => void
+  onOpen: (id: number, messageId?: number, anchor?: ConversationAnchor) => void
+  onGather: (world: WorldId, messageId?: number, anchor?: ConversationAnchor, worldId?: string) => void
   onSeek: () => void
   onLetter: (id: number) => void
+  onReadLetterReply?: (personId: number, letterId: string) => void
+  onGuestTransfer?: () => void
   onGiftActivity: (personId: number, goalId?: string, receiptId?: string) => void
   onGifts?: () => void
   onInvite?: () => void
   onSystem?: () => void
   systemCount?: number
+  systemPreview?: string
   invitePromotion?: { unread: boolean; onRead: () => void }
   onUpdates?: () => void
 }
@@ -71,14 +84,22 @@ function matchText(text: string, query: string) {
   return <>{text.slice(0, start)}<mark>{text.slice(start, end)}</mark>{text.slice(end)}</>
 }
 
-export function Home({ people, chats, giftOwner, query, onQuery, onOpen, onGather, onLetter, onSeek, onGiftActivity, onInvite, onSystem, systemCount = 0, invitePromotion, onUpdates }: HomeProps) {
+function HomeGiftActivity({ giftOwner, people, chats, searching, onGiftActivity }: Pick<HomeProps, 'giftOwner' | 'people' | 'chats' | 'onGiftActivity'> & { searching: boolean }) {
+  const activity = useHomeGiftActivity(giftOwner, people)
+  if (searching || !activity) return null
+  if (activity.receiptId && chats[String(activity.personId)]?.some(
+    message => message.kind === 'gift' && message.direction === 'sent' && message.giftId === activity.receiptId,
+  )) return null
+  return <button className="meet-activity" onClick={() => onGiftActivity(activity.personId, activity.goalId, activity.receiptId)}>
+    <Gift className="meet-activity-icon" aria-hidden /><span>{activity.detail}</span><I.Chevron className="meet-chevron" />
+  </button>
+}
+
+export function Home({ people, chats, serviceAccount = false, conversationSummaries = [], conversationWorlds = [], searchSession, peopleLoad = 'ready', onRetryPeople, canSeek, giftOwner, query, onQuery, onOpen, onGather, onLetter, onReadLetterReply, onGuestTransfer, onSeek, onGiftActivity, onInvite, onSystem, systemCount = 0, systemPreview: serviceSystemPreview, invitePromotion, onUpdates }: HomeProps) {
   const { t, lang } = useI18n()
   const zh = isZh(lang)
   const night = useContext(NightCtx)
-  const activity = useHomeGiftActivity(giftOwner, people)
-  const activityInChat = activity?.receiptId && chats[String(activity.personId)]?.some(
-    message => message.kind === 'gift' && message.direction === 'sent' && message.giftId === activity.receiptId,
-  )
+  const invitation = invitePromotion
   useStatusTone(night ? 'light' : 'dark')
   const [searchMode, setSearchMode] = useState<'closed' | 'open' | 'restored'>(() => query.trim() ? 'restored' : 'closed')
   const [actions, setActions] = useState(false)
@@ -91,17 +112,39 @@ export function Home({ people, chats, giftOwner, query, onQuery, onOpen, onGathe
   const searchOpener = useRef<HTMLButtonElement>(null)
   const choiceFrame = useRef(0)
   const choosing = useRef(false)
-  const rows = useMemo(() => conversationRows(people, chats, query, t, lang), [people, chats, query, t, lang])
+  const search = useConversationSearch(searchSession, query, zh ? 'zh-CN' : 'en')
+  const [searchWorlds, setSearchWorlds] = useState<{ key: string; worlds: WorldCard[]; failed?: boolean }>({ key: '', worlds: [] })
+  const [worldRetry, setWorldRetry] = useState(0)
+  const worldKey = JSON.stringify([searchSession?.accountId, searchSession?.sessionId, query, search.hits.filter(hit => hit.conversationKind === 'gather').map(hit => hit.worldId)])
+  const missingWorlds = search.hits.flatMap(hit => hit.conversationKind === 'gather' && hit.worldId && !conversationWorlds.some(world => world.id === hit.worldId) ? [hit.worldId] : [])
+  useEffect(() => {
+    if (!searchSession || !missingWorlds.length) return
+    const controller = new AbortController()
+    void readConversationWorlds(searchSession.sessionId, controller.signal, missingWorlds).then(worlds => {
+      if (!controller.signal.aborted) setSearchWorlds({ key: worldKey, worlds })
+    }).catch(() => { if (!controller.signal.aborted) setSearchWorlds({ key: worldKey, worlds: [], failed: true }) })
+    return () => controller.abort()
+  }, [worldKey, missingWorlds.join(','), worldRetry])
+  const worldError = !!missingWorlds.length && searchWorlds.key === worldKey && searchWorlds.failed
+  const worldsReady = !missingWorlds.length || searchWorlds.key === worldKey && !searchWorlds.failed
+  const worlds = searchWorlds.key === worldKey ? [...conversationWorlds, ...searchWorlds.worlds.filter(world => !conversationWorlds.some(value => value.id === world.id))] : conversationWorlds
+  const rows = useMemo(() => serviceAccount
+    ? serviceConversationRows(people, chats, query, search.hits, t, lang, conversationSummaries, worlds)
+    : conversationRows(people, chats, query, t, lang), [serviceAccount, people, chats, query, search.hits, t, lang, conversationSummaries, worlds])
   const circles = WORLD_IDS.filter(world => people.filter(p => p.world === world).length > 1)
   const searchOpen = searchMode !== 'closed'
   const searching = Boolean(query.trim())
+  const unreadLetter = useUnreadLetterReply(serviceAccount && onReadLetterReply && peopleLoad === 'ready' && people.length ? searchSession?.sessionId : undefined, searchSession?.onUnauthorized)
+  const letterWriter = unreadLetter ? people.find(person => person.serverId === unreadLetter.personId) : undefined
+  const searchReady = !serviceAccount || !searching || search.status === 'ready' && worldsReady
   const systemTitle = zh ? '系统通知' : 'System notices'
-  const systemPreview = zh ? '基础赠礼券已到账' : 'A standard gift voucher was added'
+  const systemPreview = serviceSystemPreview ?? (zh ? '基础赠礼券已到账' : 'A standard gift voucher was added')
   const showSystem = Boolean(onSystem && systemCount > 0 && [systemTitle, systemPreview].some(value => value.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())))
   const rowCount = rows.length + Number(showSystem)
   const write = zh ? '写消息' : 'Write a message'
   const clear = zh ? '清除搜索' : 'Clear search'
   const searchLabel = zh ? '搜索人物或消息' : 'Search people or messages'
+  const searchFieldLabel = zh ? '搜索名字、关系、世界或消息' : 'Search names, relationships, worlds or messages'
   const moreLabel = zh ? '新建与更多操作' : 'New and more actions'
   const moreWithInvite = zh ? '新建与更多操作，有邀请奖励' : 'New and more actions, invitation rewards available'
 
@@ -196,7 +239,7 @@ export function Home({ people, chats, giftOwner, query, onQuery, onOpen, onGathe
       {searchOpen ? <div className="meet-search-bar" role="search" aria-label={searchLabel}>
         <SearchField value={query} onChange={onQuery} clear={clear} autoFocus={searchMode === 'open'}
           placeholder={searchLabel}
-          label={zh ? '搜索名字、关系、世界或消息' : 'Search names, relationships, worlds or messages'} />
+          label={searchFieldLabel} />
         <button className="meet-search-cancel" autoFocus={searchMode === 'restored'} onClick={closeSearch}>{t('common.cancel')}</button>
       </div> : <div className="meet-heading">
         <div className="meet-title"><h1>{t('nav.meet')}</h1></div>
@@ -209,10 +252,10 @@ export function Home({ people, chats, giftOwner, query, onQuery, onOpen, onGathe
           onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) setActions(false) }}
           onKeyDown={e => { if (actions && e.key === 'Escape') { setActions(false); opener.current?.focus() } }}>
           <button ref={opener} className="meet-add" aria-expanded={actions} aria-controls={actions ? 'meet-actions' : undefined}
-            aria-label={invitePromotion?.unread ? moreWithInvite : moreLabel} onClick={() => {
-              if (!actions && invitePromotion?.unread) invitePromotion.onRead()
+            aria-label={invitation?.unread ? moreWithInvite : moreLabel} onClick={() => {
+              if (!actions && invitation?.unread) invitation.onRead()
               haptic(6); setActions(!actions)
-            }}><I.Plus />{invitePromotion?.unread && <span className="meet-invite-dot" aria-hidden />}</button>
+            }}><I.Plus />{invitation?.unread && <span className="meet-invite-dot" aria-hidden />}</button>
           {actions && <div id="meet-actions" className="meet-menu pop-in">
             {!!people.length && <button onClick={() => choose('message')}><I.Meet />{write}</button>}
             {!!people.length && <button onClick={() => choose('letter')}><I.Mail />{t('home.menu.letter')}</button>}
@@ -223,8 +266,8 @@ export function Home({ people, chats, giftOwner, query, onQuery, onOpen, onGathe
               setActions(false)
               opener.current?.focus({ preventScroll: true })
               haptic(6); onInvite()
-            }}><UserPlus aria-hidden />{invitePromotion ? (zh ? '邀请朋友' : 'Invite friends') : (zh ? '邀友领券' : 'Invite & earn')}
-              {invitePromotion && <span className="meet-invite-tag">{zh ? '有礼' : 'Rewards'}</span>}</button>}
+            }}><UserPlus aria-hidden />{invitation ? (zh ? '邀请朋友' : 'Invite friends') : (zh ? '邀友领券' : 'Invite & earn')}
+              {invitation && <span className="meet-invite-tag">{zh ? '有礼' : 'Rewards'}</span>}</button>}
             {onUpdates && <button aria-haspopup="dialog" onClick={() => {
               setActions(false)
               opener.current?.focus({ preventScroll: true })
@@ -236,11 +279,21 @@ export function Home({ people, chats, giftOwner, query, onQuery, onOpen, onGathe
       </div>}
     </header>
     <div ref={homeList} className="meet-list meet-home-list scroll-quiet">
-      {searching && <div className="meet-count" aria-live="polite" aria-atomic="true">
+      {searching && searchReady && (!serviceAccount || peopleLoad === 'ready' || people.length > 0) && <div className="meet-count" aria-live="polite" aria-atomic="true">
         <h2>{zh ? '搜索结果' : 'Search results'}</h2>
         <span aria-hidden="true" className="meet-rule" /><span>{String(rowCount).padStart(2, '0')}</span>
       </div>}
-      {rows.map(row => <button key={row.key} className="meet-row" onClick={() => row.person ? onOpen(row.person.id, row.messageId) : onGather(row.world, row.messageId)}>
+      {!searching && unreadLetter && letterWriter && onReadLetterReply && <button className="meet-row" onClick={() => onReadLetterReply(letterWriter.id, unreadLetter.letterId)}>
+        <span className="meet-circle"><I.Mail aria-hidden /></span>
+        <span className="meet-copy"><b>{t('home.row.reply')}</b><small>{zh ? `${letterWriter.name} 的来信 · 打开信匣` : `From ${letterWriter.name} · Open letterbox`}</small></span>
+        <span className="meet-time">{fmtTime(lang, new Date(unreadLetter.createdAt))}</span>
+      </button>}
+      {!searching && onGuestTransfer && <button type="button" className="meet-row" onClick={onGuestTransfer}>
+        <span className="meet-circle"><I.Keep aria-hidden /></span>
+        <span className="meet-copy"><b>{zh ? '找回访客时写的回忆' : 'Bring back your guest memory'}</b>
+          <small>{zh ? '先查看，再决定是否保存到这里' : 'Review it before keeping it here'}</small></span>
+      </button>}
+      {rows.map(row => <button key={row.key} className="meet-row" onClick={() => row.person ? onOpen(row.person.id, row.messageId, row.anchor) : onGather(row.world, row.messageId, row.anchor, row.worldId)}>
         {row.person ? <Lens world={row.world} avatar={row.person.avatar} name={row.person.name} size={48} />
           : <span className="meet-circle"><I.Gather /></span>}
         <span className="meet-copy"><b>{matchText(row.title, query)}</b><small>{matchText(row.preview, query)}</small></span>
@@ -251,13 +304,28 @@ export function Home({ people, chats, giftOwner, query, onQuery, onOpen, onGathe
         <span className="meet-copy"><b>{matchText(systemTitle, query)}</b><small>{matchText(systemPreview, query)}</small></span>
         <I.Chevron className="meet-chevron" />
       </button>}
-      {!searching && activity && !activityInChat && <button className="meet-activity" onClick={() => onGiftActivity(activity.personId, activity.goalId, activity.receiptId)}>
-        <Gift className="meet-activity-icon" aria-hidden /><span>{activity.detail}</span><I.Chevron className="meet-chevron" />
-      </button>}
-      {(searching ? rowCount === 0 : !people.length) && <div className="meet-empty">
-        <h2>{searching ? (zh ? '没有找到匹配的会话' : 'No matching conversations') : (zh ? '还没有联系人' : 'No contacts yet')}</h2>
-        <p>{searching ? (zh ? '试试另一个名字或消息关键词。' : 'Try a different name or word from a message.')
-          : (zh ? '找到 TA 后，就可以在这里聊天。' : 'Find someone to start a conversation here.')}</p>
+      {!serviceAccount && <HomeGiftActivity giftOwner={giftOwner} people={people} chats={chats} searching={searching} onGiftActivity={onGiftActivity} />}
+      {serviceAccount && searching && !searchReady && peopleLoad === 'ready' && <div className="meet-empty">
+        <p role="status">{search.status === 'error' || worldError
+          ? search.error === 'INVALID_QUERY' ? (zh ? '搜索词最多 160 个字，请检查后重试。' : 'Use a search phrase of up to 160 characters.')
+            : search.error === 'HISTORY_TOO_LARGE' ? (zh ? '历史记录较多，暂时无法完成搜索。' : 'This history is too large to search right now.')
+              : (zh ? '暂时无法搜索对话，请稍后重试。' : 'Conversations could not be searched. Try again shortly.')
+          : (zh ? '正在搜索对话…' : 'Searching conversations…')}</p>
+        {(search.status === 'error' || worldError) && <button className="meet-empty-link" onClick={() => { if (worldError) { setSearchWorlds({ key: '', worlds: [] }); setWorldRetry(value => value + 1) }; search.retry() }}>{zh ? '重试' : 'Try again'}</button>}
+      </div>}
+      {serviceAccount && peopleLoad === 'loading' && !people.length && <div className="meet-empty">
+        <p role="status">{zh ? '正在加载联系人…' : 'Loading contacts…'}</p>
+      </div>}
+      {serviceAccount && peopleLoad === 'error' && <div className="meet-empty">
+        <p role="status">{zh ? '暂时无法加载联系人。' : 'Contacts could not be loaded.'}</p>
+        {onRetryPeople && <button className="meet-empty-link" onClick={onRetryPeople}>{zh ? '重试' : 'Try again'}</button>}
+      </div>}
+      {searchReady && (!serviceAccount || peopleLoad === 'ready') && (searching ? rowCount === 0 : !people.length) && <div className="meet-empty">
+        <h2>{searching
+          ? (zh ? '没有找到匹配的会话' : 'No matching conversations')
+          : (zh ? '还没有联系人' : 'No contacts yet')}</h2>
+        {searching && <p>{zh ? '试试另一个名字或消息关键词。' : 'Try a different name or word from a message.'}</p>}
+        {!searching && <p>{zh ? '找到 TA 后，就可以在这里聊天。' : 'Find someone to start a conversation here.'}</p>}
         {searching ? <button className="meet-empty-link" onClick={() => onQuery('')}>{clear}</button>
           : <button className="meet-cta btn-dark" onClick={onSeek}>{t('home.menu.seek')}<I.Chevron /></button>}
       </div>}

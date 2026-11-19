@@ -63,13 +63,13 @@ public class CapacitorCookieManager extends CookieManager {
                 url = "https://" + url;
             }
         } catch (URISyntaxException e) {
-            Logger.error(TAG, "Failed to get scheme from URL.", e);
+            Logger.error(TAG, "Cookie URL scheme could not be read.", null);
         }
 
         try {
             new URI(url);
         } catch (Exception error) {
-            Logger.error(TAG, "Failed to get sanitized URL.", error);
+            Logger.error(TAG, "Cookie URL could not be validated.", null);
             throw error;
         }
         return url;
@@ -88,10 +88,10 @@ public class CapacitorCookieManager extends CookieManager {
     public String getCookieString(String url) {
         try {
             url = getSanitizedDomain(url);
-            Logger.info(TAG, "Getting cookies at: '" + url + "'");
+            Logger.info(TAG, "Reading cookies.");
             return webkitCookieManager.getCookie(url);
         } catch (Exception error) {
-            Logger.error(TAG, "Failed to get cookies at the given URL.", error);
+            Logger.error(TAG, "Cookies could not be read.", null);
         }
 
         return null;
@@ -148,11 +148,11 @@ public class CapacitorCookieManager extends CookieManager {
     public void setCookie(String url, String value) {
         try {
             url = getSanitizedDomain(url);
-            Logger.info(TAG, "Setting cookie '" + value + "' at: '" + url + "'");
+            Logger.info(TAG, "Setting cookie.");
             webkitCookieManager.setCookie(url, value);
             flush();
         } catch (Exception error) {
-            Logger.error(TAG, "Failed to set cookie.", error);
+            Logger.error(TAG, "Cookie could not be set.", null);
         }
     }
 

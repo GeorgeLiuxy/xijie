@@ -70,3 +70,40 @@
   .gi-content { padding-inline: 18px; }
   .gi-content h1 { font-size: 26px; }
 }
+.gi-ticket {
+  display: grid;
+  gap: 10px;
+}
+
+.gi-ticket__paper {
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  padding: 18px 20px;
+  border: 1px dashed var(--color-line);
+  border-radius: 16px;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+
+.gi-ticket__paper svg {
+  width: 23px;
+  height: 23px;
+  color: var(--color-sun-deep);
+}
+
+.gi-ticket__paper > p:first-of-type {
+  color: var(--color-ink-soft);
+  font-size: 11px;
+}
+
+.gi-ticket__paper h3 {
+  font: 500 20px/1.4 var(--font-serif);
+}
+
+.gi-ticket__message {
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}

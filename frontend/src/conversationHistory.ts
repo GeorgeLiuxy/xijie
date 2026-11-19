@@ -29,17 +29,20 @@ export function useConversationHistory(initial: Msg[] | undefined, persist: (mes
 
 const sessionDrafts = new Map<string, string>()
 const draftKey = (owner: string, threadId: string | number) => JSON.stringify([owner, threadId])
+if(typeof window!=='undefined'&&typeof window.addEventListener==='function')window.addEventListener('xijie:private-drafts-erased',event=>{const id=(event as CustomEvent<{accountId?:string}>).detail?.accountId;if(typeof id!=='string')return;for(const key of sessionDrafts.keys()){try{if(JSON.parse(key)[0]==='account.'+id)sessionDrafts.delete(key)}catch{/* Unknown ownership is never inferred from text. */}}})
 
 export function clearConversationDraft(owner: string, threadId: string | number) {
   sessionDrafts.delete(draftKey(owner, threadId))
 }
 
-export function useConversationDraft(owner: string, threadId: string | number) {
+export function useConversationDraft(owner: string, threadId: string | number, durable = false) {
   const key = draftKey(owner, threadId)
-  const [draft, setDraft] = useState(() => sessionDrafts.get(key) ?? '')
+  const stored = () => { try { return durable ? sessionStorage.getItem('xijie.conversation.draft.' + key) ?? '' : '' } catch { return '' } }
+  const [draft, setDraft] = useState(() => durable ? stored() : sessionDrafts.get(key) ?? '')
   function update(value: string) {
     if (value) sessionDrafts.set(key, value)
     else clearConversationDraft(owner, threadId)
+    if (durable) { try { if (value) sessionStorage.setItem('xijie.conversation.draft.' + key, value); else sessionStorage.removeItem('xijie.conversation.draft.' + key) } catch { /* Keep the live draft when storage is unavailable. */ } }
     setDraft(value)
   }
   return [draft, update] as const

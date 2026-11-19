@@ -1,0 +1,19 @@
+services:
+  people-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: xijie_people
+      POSTGRES_USER: xijie_people
+      POSTGRES_PASSWORD: ${XIJIE_PEOPLE_DB_PASSWORD:?Set XIJIE_PEOPLE_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U xijie_people -d xijie_people"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - people-db:/var/lib/postgresql/data
+
+volumes:
+  people-db:

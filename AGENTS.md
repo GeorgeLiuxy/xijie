@@ -31,7 +31,14 @@ This is the canonical project structure. Start with task-relevant files below. O
 - Build tooling: Vite 8, TypeScript 5.7, and `@vitejs/plugin-react`
 - Formatting: oxfmt
 
-## Styling
+## Backend integration and the approved frontend
+
+- The user-approved frontend in the initial commit `53d5293` is the presentation and interaction baseline. Backend integration must preserve its layout, colors, typography, product copy, navigation destinations, and sequence of user decisions.
+- Connect the existing controls to real services. Adapt backend contracts to the established flow; do not replace pages with smaller integration screens, hide original sections, move fields to different steps, or rewrite emotional product copy to describe database operations.
+- Keep verified session ownership, authorization, concurrency, idempotency, and error handling. A pending service must use the existing feedback mechanism and retain user input; it must never create demo messages, AI replies, balances, gifts, or successful saves for a real account.
+- Product design changes require an explicit user request. Development notes, test controls, and internal API terminology belong outside the product interface.
+
+## Styling conventions
 
 This project uses **Tailwind CSS v4** through the `@tailwindcss/vite` plugin configured in `vite.config.ts`. `frontend/src/index.css` imports Tailwind with `@import 'tailwindcss';`. Use Tailwind utility classes directly in JSX and put global CSS or Tailwind v4 theme customization in `frontend/src/index.css`. This scaffold does not need a Tailwind config file or PostCSS config.
 

@@ -2,6 +2,7 @@ import type { Chats, Msg, Person } from '../model'
 import { isZh, type Lang } from '../i18n'
 import { receiptMatchesPerson, targetMatchesPerson } from './store'
 import type { GiftReceipt, GiftState } from './types'
+import { giftMessageText } from './messageText'
 
 type GiftMessage = Extract<Msg, { kind: 'gift' }>
 
@@ -20,14 +21,14 @@ export function appendGiftMessages(chats: Chats, people: Person[], ledger: GiftS
       const first = receipt.lines[0]
       events.push({ id: -(index * 2 + 1), kind: 'gift', owner, direction: 'sent', giftId: receipt.id, at: receipt.createdAt,
         time: clock(receipt.createdAt, lang),
-        text: `${zh ? '[礼物] 送出' : '[Gift] Sent'} ${zh ? first.snapshot.name : first.snapshot.en} ×${first.quantity}${receipt.note ? ' · ' + receipt.note : ''}` })
+        text: giftMessageText('sent', first.snapshot, first.quantity, receipt.note, zh) })
     }
     for (const [index, gift] of (ledger.received ?? []).entries()) {
       if (!targetMatchesPerson(gift.from, person)) continue
       const first = gift.lines[0]
       events.push({ id: -(index * 2 + 2), kind: 'gift', owner, direction: 'received', giftId: gift.id, at: gift.createdAt,
         time: clock(gift.createdAt, lang),
-        text: `${zh ? '[礼物] 收到' : '[Gift] Received'} ${zh ? first.snapshot.name : first.snapshot.en} ×${first.quantity}${gift.note ? ' · ' + gift.note : ''}` })
+        text: giftMessageText('received', first.snapshot, first.quantity, gift.note, zh) })
     }
     const key = String(person.id)
     const existing = (chats[key] ?? []).filter(message => message.kind !== 'gift')

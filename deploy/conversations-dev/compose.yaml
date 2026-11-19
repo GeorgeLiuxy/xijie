@@ -1,0 +1,25 @@
+services:
+  conversations-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: xijie_conversations
+      POSTGRES_USER: xijie_conversations
+      POSTGRES_PASSWORD: ${XIJIE_CONVERSATIONS_DB_PASSWORD:?Set XIJIE_CONVERSATIONS_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U xijie_conversations -d xijie_conversations"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - conversations-db:/var/lib/postgresql/data
+
+volumes:
+  conversations-db:
+
+# Share the existing local development bridge; databases and credentials remain service-owned.
+networks:
+  default:
+    external: true
+    name: xijie-identity-dev_default

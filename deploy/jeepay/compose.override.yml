@@ -1,0 +1,160 @@
+# 与 source-lock.json 固定版本的上游 docker-compose.yml 一起使用。
+# 依赖 Compose >= 2.24.4 的 !override / !reset；不会自动启动。
+# 所有发布端口仅回环监听，中间件不发布；专用项目网络允许网关访问支付渠道。
+services:
+  mysql:
+    container_name: !reset null
+    restart: unless-stopped
+    ports: !override []
+    environment:
+      MYSQL_ROOT_PASSWORD: ${JEEPAY_DB_ROOT_PASSWORD:?Set a unique random database root password}
+      MYSQL_USER: jeepay
+      MYSQL_PASSWORD: ${JEEPAY_DB_PASSWORD:?Set a unique random application database password}
+    # init.sql is the full current schema. patch.sql is historical upgrade SQL
+    # and fails on a new current database before the private bootstrap can run.
+    volumes: !override
+      - mysql:/var/lib/mysql
+      - ./docs/sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ${JEEPAY_BOOTSTRAP_SQL:?Set private first-boot SQL}:/docker-entrypoint-initdb.d/03-bootstrap.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "test \"$$(MYSQL_PWD=\"$$MYSQL_PASSWORD\" mysql -h127.0.0.1 -ujeepay --batch --skip-column-names jeepaydb -e 'SELECT version FROM xijie_local_bootstrap WHERE id=1')\" = 1"]
+    networks: !override
+      jeepay: {}
+  redis:
+    container_name: !reset null
+    restart: unless-stopped
+    ports: !override []
+    command: ["redis-server", "--requirepass", "${JEEPAY_REDIS_PASSWORD:?Set a unique random Redis password}"]
+    environment:
+      REDISCLI_AUTH: ${JEEPAY_REDIS_PASSWORD:?Set a unique random Redis password}
+    networks: !override
+      jeepay: {}
+  rocketmq-namesrv:
+    container_name: !reset null
+    restart: unless-stopped
+    environment:
+      JAVA_OPT_EXT: -Xms128m -Xmx256m -Xmn128m
+    ports: !override []
+    networks: !override
+      jeepay: {}
+  rocketmq-broker:
+    container_name: !reset null
+    restart: unless-stopped
+    ports: !override []
+    networks: !override
+      jeepay: {}
+  payment:
+    container_name: !reset null
+    restart: unless-stopped
+    image: ${JEEPAY_IMAGE_PREFIX:-xijie-jeepay}-payment:e1ac9086d679
+    build:
+      args:
+        BASE_IMAGE: ${JEEPAY_JRE_IMAGE:-eclipse-temurin:17-jre}
+    ports: !override ["127.0.0.1:${JEEPAY_API_PORT:-9216}:9216"]
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/9216"]
+    environment:
+      JAVA_TOOL_OPTIONS: -Xms128m -Xmx512m -XX:ActiveProcessorCount=2
+      SPRING_APPLICATION_JSON: >-
+        {"spring":{"datasource":{"username":"jeepay","password":"${JEEPAY_DB_PASSWORD:?Set database password}"},"data":{"redis":{"password":"${JEEPAY_REDIS_PASSWORD:?Set Redis password}"}}},"logging":{"level":{"root":"WARN","com.jeequan.jeepay":"ERROR"}},"isys":{"allow-cors":false},"springdoc":{"api-docs":{"enabled":false},"swagger-ui":{"enabled":false}},"knife4j":{"enable":false}}
+    volumes:
+      - payment_uploads:/jeepayhomes/service/uploads
+    networks: !override
+      jeepay: {}
+  manager:
+    container_name: !reset null
+    restart: unless-stopped
+    image: ${JEEPAY_IMAGE_PREFIX:-xijie-jeepay}-manager:e1ac9086d679
+    build:
+      args:
+        BASE_IMAGE: ${JEEPAY_JRE_IMAGE:-eclipse-temurin:17-jre}
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/9217"]
+    ports: !override []
+    environment:
+      JAVA_TOOL_OPTIONS: -Xms128m -Xmx512m -XX:ActiveProcessorCount=2
+      SPRING_APPLICATION_JSON: >-
+        {"spring":{"datasource":{"username":"jeepay","password":"${JEEPAY_DB_PASSWORD:?Set database password}"},"data":{"redis":{"password":"${JEEPAY_REDIS_PASSWORD:?Set Redis password}"}}},"logging":{"level":{"root":"WARN","com.jeequan.jeepay":"ERROR"}},"isys":{"allow-cors":false,"jwt-secret":"${JEEPAY_MANAGER_JWT_SECRET:?Set manager JWT secret}"},"springdoc":{"api-docs":{"enabled":false},"swagger-ui":{"enabled":false}},"knife4j":{"enable":false}}
+    volumes:
+      - manager_uploads:/jeepayhomes/service/uploads
+    networks: !override
+      jeepay: {}
+  merchant:
+    container_name: !reset null
+    restart: unless-stopped
+    image: ${JEEPAY_IMAGE_PREFIX:-xijie-jeepay}-merchant:e1ac9086d679
+    build:
+      args:
+        BASE_IMAGE: ${JEEPAY_JRE_IMAGE:-eclipse-temurin:17-jre}
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/9218"]
+    ports: !override []
+    environment:
+      JAVA_TOOL_OPTIONS: -Xms128m -Xmx512m -XX:ActiveProcessorCount=2
+      SPRING_APPLICATION_JSON: >-
+        {"spring":{"datasource":{"username":"jeepay","password":"${JEEPAY_DB_PASSWORD:?Set database password}"},"data":{"redis":{"password":"${JEEPAY_REDIS_PASSWORD:?Set Redis password}"}}},"logging":{"level":{"root":"WARN","com.jeequan.jeepay":"ERROR"}},"isys":{"allow-cors":false,"jwt-secret":"${JEEPAY_MERCHANT_JWT_SECRET:?Set merchant JWT secret}"},"springdoc":{"api-docs":{"enabled":false},"swagger-ui":{"enabled":false}},"knife4j":{"enable":false}}
+    volumes:
+      - merchant_uploads:/jeepayhomes/service/uploads
+    networks: !override
+      jeepay: {}
+  ui-payment:
+    container_name: !reset null
+    restart: unless-stopped
+    image: ${JEEPAY_IMAGE_PREFIX:-xijie-jeepay}-ui-cashier:9c64a11719f2
+    build:
+      dockerfile: ${JEEPAY_UI_DOCKERFILE:-../../../deploy/jeepay/ui.Dockerfile}
+      additional_contexts:
+        deployment: ${JEEPAY_DEPLOY_DIR:-../../../deploy/jeepay}
+      args:
+        NODE_IMAGE: ${JEEPAY_NODE_IMAGE:-node:22-alpine}
+        NGINX_IMAGE: ${JEEPAY_NGINX_IMAGE:-nginx:1.28-alpine}
+    ports: !override ["127.0.0.1:${JEEPAY_CASHIER_PORT:-9226}:80"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+    environment:
+      BACKEND_HOST: payment:9216
+    networks: !override
+      jeepay: {}
+  ui-manager:
+    container_name: !reset null
+    restart: unless-stopped
+    image: ${JEEPAY_IMAGE_PREFIX:-xijie-jeepay}-ui-manager:9c64a11719f2
+    build:
+      dockerfile: ${JEEPAY_UI_DOCKERFILE:-../../../deploy/jeepay/ui.Dockerfile}
+      additional_contexts:
+        deployment: ${JEEPAY_DEPLOY_DIR:-../../../deploy/jeepay}
+      args:
+        NODE_IMAGE: ${JEEPAY_NODE_IMAGE:-node:22-alpine}
+        NGINX_IMAGE: ${JEEPAY_NGINX_IMAGE:-nginx:1.28-alpine}
+    ports: !override ["127.0.0.1:${JEEPAY_MANAGER_UI_PORT:-9227}:80"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+    environment:
+      BACKEND_HOST: manager:9217
+    networks: !override
+      jeepay: {}
+  ui-merchant:
+    container_name: !reset null
+    restart: unless-stopped
+    image: ${JEEPAY_IMAGE_PREFIX:-xijie-jeepay}-ui-merchant:9c64a11719f2
+    build:
+      dockerfile: ${JEEPAY_UI_DOCKERFILE:-../../../deploy/jeepay/ui.Dockerfile}
+      additional_contexts:
+        deployment: ${JEEPAY_DEPLOY_DIR:-../../../deploy/jeepay}
+      args:
+        NODE_IMAGE: ${JEEPAY_NODE_IMAGE:-node:22-alpine}
+        NGINX_IMAGE: ${JEEPAY_NGINX_IMAGE:-nginx:1.28-alpine}
+    ports: !override ["127.0.0.1:${JEEPAY_MERCHANT_UI_PORT:-9228}:80"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+    environment:
+      BACKEND_HOST: merchant:9218
+    networks: !override
+      jeepay: {}
+networks:
+  jeepay: !override
+    driver: bridge
+volumes:
+  payment_uploads:
+  manager_uploads:
+  merchant_uploads:

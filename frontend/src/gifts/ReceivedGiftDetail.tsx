@@ -6,6 +6,7 @@ import { useGiftState } from './GiftLedger'
 import { ParcelArt } from './GiftMessageCard'
 import { canDisplayReceivedGift } from './placement'
 import { openReceivedGift, placeReceivedGift } from './store'
+import { giftServiceMessage, useGiftService } from './giftServiceContext'
 import './gift-messages.css'
 
 export function ReceivedGiftDetail({ owner, id, onClose, onVisitSpace, onReturnGift }: {
@@ -16,6 +17,8 @@ export function ReceivedGiftDetail({ owner, id, onClose, onVisitSpace, onReturnG
   const zh = isZh(lang)
   useStatusTone(useContext(NightCtx) ? 'light' : 'dark')
   const gift = useGiftState(owner).received?.find(item => item.id === id)
+  const service = useGiftService()
+  const pending = service?.pendingReceived(id)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const lock = useRef(false)
@@ -24,16 +27,20 @@ export function ReceivedGiftDetail({ owner, id, onClose, onVisitSpace, onReturnG
     active.current = true
     return () => { active.current = false }
   }, [id, owner])
-  async function act(action: 'open' | 'display' | 'record') {
+  async function act(action: 'open' | 'display' | 'record' | 'retry') {
     if (lock.current || !gift) return
     lock.current = true
     setBusy(true)
     setError('')
     try {
-      if (action === 'open') await openReceivedGift(owner, id)
+      if (service) {
+        if (action === 'retry') await service.retryReceived(id)
+        else if (action === 'open') await service.openReceived(id)
+        else await service.placeReceived(id, action === 'display' ? 'space' : 'record')
+      } else if (action === 'open') await openReceivedGift(owner, id)
       else await placeReceivedGift(owner, id, action === 'display' ? 'space' : 'record')
-    } catch {
-      if (active.current) setError(zh ? '未能保存。请再试一次。' : 'Could not save this change. Please try again.')
+    } catch (failure) {
+      if (active.current && !(failure instanceof DOMException && failure.name === 'AbortError')) setError(service ? giftServiceMessage((failure as { code?: string }).code, zh, 'save') : zh ? '未能保存。请再试一次。' : 'Could not save this change. Please try again.')
     } finally {
       lock.current = false
       if (active.current) setBusy(false)
@@ -43,10 +50,11 @@ export function ReceivedGiftDetail({ owner, id, onClose, onVisitSpace, onReturnG
   const opened = gift?.openedAt != null
   const displayed = gift?.placement === 'space'
   const canDisplay = !!gift && canDisplayReceivedGift(gift)
+  const locked = busy || !!pending
   return <ContextSheet label={zh ? '收到的礼物' : 'Received gift'} onClose={onClose} closeDisabled={busy} className="gm-received-sheet" backPriority={40}>
   <div className="gm-detail gm-detail-sheet">
     <header className="gm-detail-head"><button data-context-close disabled={busy} onClick={onClose} aria-label={t('common.close')}><I.X/></button><span>{zh ? '收到的礼物' : 'Received gift'}</span></header>
-    {!gift || !first ? <main className="gm-detail-missing"><p>{zh ? '这份礼物的记录暂时无法读取。' : 'This gift record is unavailable.'}</p><button className="btn-dark" onClick={onClose}>{t('common.back')}</button></main> : <>
+    {!gift || !first ? <main className="gm-detail-missing"><p>{service?.receivedError ? giftServiceMessage(service.receivedError, zh) : zh ? '这份礼物的记录暂时无法读取。' : 'This gift record is unavailable.'}</p>{service && <button onClick={() => void service.readReceived(id).catch(() => {})}>{zh ? '重试' : 'Retry'}</button>}<button className="btn-dark" onClick={onClose}>{t('common.back')}</button></main> : <>
       <main className="gm-detail-scroll scroll-quiet">
         <div className="gm-detail-art" data-world={gift.from.world} data-opened={opened}>
           <ParcelArt key={String(opened)} id={first.giftId} sealed={!opened}/>
@@ -61,11 +69,12 @@ export function ReceivedGiftDetail({ owner, id, onClose, onVisitSpace, onReturnG
       </main>
       <footer className="gm-detail-actions">
         {error && <p className="gm-error" role="alert">{error}</p>}
-        {!opened ? <button className="btn-dark" disabled={busy} onClick={() => act('open')}>{zh ? '拆开礼物' : 'Unwrap gift'}</button> :
-          displayed ? <><button className="btn-dark" disabled={busy} onClick={onVisitSpace}>{zh ? '查看我的空间' : 'View my space'}</button><button disabled={busy} onClick={() => act('record')}>{zh ? '收回礼物记录' : 'Remove from display'}</button></> :
-          canDisplay ? <><button className="btn-dark" disabled={busy} onClick={() => act('display')}>{busy ? (zh ? '正在保存…' : 'Saving…') : (zh ? '放到我的空间' : 'Display in my space')}</button><button disabled={busy} onClick={onClose}>{zh ? '先收进礼物记录' : 'Keep in gift records'}</button></> :
+        {pending && <button className="btn-dark" disabled={busy} onClick={() => act('retry')}>{busy ? zh ? '正在保存…' : 'Saving…' : zh ? '继续上次操作' : 'Continue previous change'}</button>}
+        {!opened ? <button className="btn-dark" disabled={locked} onClick={() => act('open')}>{zh ? '拆开礼物' : 'Unwrap gift'}</button> :
+          displayed ? <><button className="btn-dark" disabled={locked} onClick={onVisitSpace}>{zh ? '查看我的空间' : 'View my space'}</button><button disabled={locked} onClick={() => act('record')}>{zh ? '收回到礼物记录' : 'Remove from display'}</button></> :
+          canDisplay ? <><button className="btn-dark" disabled={locked} onClick={() => act('display')}>{busy ? (zh ? '正在保存…' : 'Saving…') : (zh ? '放到我的空间' : 'Display in my space')}</button><button disabled={busy} onClick={onClose}>{zh ? '先收进礼物记录' : 'Keep in gift records'}</button></> :
           <button className="btn-dark" disabled={busy} onClick={onClose}>{zh ? '收好了' : 'Done'}</button>}
-        {opened && onReturnGift && <button disabled={busy} onClick={onReturnGift}>{zh ? '也寄一份心意' : 'Send a gift back'}</button>}
+        {opened && onReturnGift && <button disabled={locked} onClick={onReturnGift}>{zh ? '也寄一份心意' : 'Send a gift back'}</button>}
       </footer>
     </>}
   </div>

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "processes": [
+    {"id":"identity-api","service":"identity","entry":"main","envFile":"private/identity.env","enabled":true},
+    {"id":"people-api","service":"people","entry":"main","envFile":"private/people.env","enabled":true},
+    {"id":"conversations-api","service":"conversations","entry":"main","envFile":"private/conversations.env","enabled":true},
+    {"id":"memories-api","service":"memories","entry":"main","envFile":"private/memories.env","enabled":true},
+    {"id":"social-api","service":"social","entry":"main","envFile":"private/social.env","enabled":true},
+    {"id":"media-api","service":"media","entry":"main","envFile":"private/media.env","enabled":true},
+    {"id":"gifts-api","service":"gifts","entry":"main","envFile":"private/gifts.env","enabled":true},
+    {"id":"conversation-models","service":"conversations","entry":"worker","envFile":"private/conversations.env","enabled":false},
+    {"id":"memory-suggestions","service":"memories","entry":"worker","envFile":"private/memories.env","enabled":false},
+    {"id":"automatic-memory","service":"memories","entry":"automatic-worker","envFile":"private/memories.env","enabled":false},
+    {"id":"private-echoes","service":"social","entry":"echo-worker","envFile":"private/social.env","enabled":false},
+    {"id":"shared-albums","service":"social","entry":"albums-worker","envFile":"private/social.env","enabled":false},
+    {"id":"media-processing","service":"media","entry":"worker","envFile":"private/media.env","enabled":false},
+    {"id":"commerce-deliveries","service":"gifts","entry":"worker","envFile":"private/gifts.env","enabled":false},
+    {"id":"character-gift-returns","service":"gifts","entry":"return-worker","envFile":"private/gifts.env","enabled":false},
+    {"id":"data-rights","service":"identity","entry":"rights-worker","envFile":"private/identity.env","enabled":false},
+    {"id":"public-reports","service":"identity","entry":"reports-worker","envFile":"private/identity.env","enabled":false}
+  ]
+}

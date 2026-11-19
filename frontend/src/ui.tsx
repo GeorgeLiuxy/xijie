@@ -139,10 +139,12 @@ export function Sheet({ onClose, children, title, dark, tall, footer }: {
   )
 }
 
-export function Toast({ text, dark }: { text: string; dark?: boolean }) {
+export function Toast({ text, dark, action }: { text: string; dark?: boolean; action?: { label: string; onClick: () => void; disabled?: boolean } }) {
   return (
-    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-[150px] z-[90] animate-toast">
-      <div className={`rounded-full px-4 py-2.5 text-[13.5px] whitespace-nowrap ${dark ? 'glass-deep text-pearl' : 'btn-dark shadow-lg'}`}>{text}</div>
+    <div style={action ? { animationDuration: '8s' } : undefined} className={`pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-[150px] z-[90] animate-toast ${action ? 'max-w-[calc(100%-32px)]' : ''}`}>
+      <div className={`rounded-full px-4 py-2.5 text-[13.5px] whitespace-nowrap ${dark ? 'glass-deep text-pearl' : 'btn-dark shadow-lg'} ${action ? 'flex items-center gap-3' : ''}`}>
+        {action ? <><span className="min-w-0 whitespace-normal leading-relaxed">{text}</span><button type="button" onClick={action.onClick} disabled={action.disabled} aria-busy={action.disabled} className="pointer-events-auto min-h-8 shrink-0 border-l border-current/25 pl-3 font-semibold underline underline-offset-4 disabled:opacity-60">{action.label}</button></> : text}
+      </div>
     </div>
   )
 }

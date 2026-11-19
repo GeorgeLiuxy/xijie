@@ -285,14 +285,15 @@ export function subscribeGifts(owner: string, listener: () => void): () => void 
 }
 
 export function hasArrived(receipt: GiftReceipt, now = Date.now()): boolean {
-  return now >= receipt.arriveAt
+  return receipt.status ? receipt.status === 'arrived' : now >= receipt.arriveAt
 }
 
-export function targetMatchesPerson(target: GiftTarget, person: Pick<Person, 'id' | 'localId'>): boolean {
+export function targetMatchesPerson(target: GiftTarget, person: Pick<Person, 'id' | 'localId' | 'serverId'>): boolean {
+  if (person.serverId) return target.identity === person.serverId
   return target.identity ? target.identity === person.localId : target.id === person.id
 }
 
-export function receiptMatchesPerson(receipt: GiftReceipt, person: Pick<Person, 'id' | 'localId'>): boolean {
+export function receiptMatchesPerson(receipt: GiftReceipt, person: Pick<Person, 'id' | 'localId' | 'serverId'>): boolean {
   return targetMatchesPerson(receipt.target, person)
 }
 

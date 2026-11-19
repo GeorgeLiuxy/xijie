@@ -8,27 +8,43 @@ import { WORLDS } from './worlds'
  * 多位联系人可以同在一个世界。不同账号的同名世界彼此独立。
  * ------------------------------------------------------------------ */
 
-export type Memory = { id: number; title: string; body: string; source?: { kind: 'shared'; goalId: string; seat: number } }
+export type Memory = {
+  id: number; title: string; body: string
+  serverId?: string; serverVersion?: number; personServerId?: string; confirmedAt?: string; origin?: string
+  source?: { kind: 'shared'; goalId: string; seat: number } | { kind: 'message'; messageId: string } | {kind:'shared_contribution';albumId:string;contributionId:string}
+}
 export type Gift = string
 export type Story = { id: number; title: string; text: string[]; imagined?: boolean }
-export type Letter = { id: number; date: string; text: string; wantReply?: boolean; replyAt?: number; reply?: string; replyNew?: boolean }
+export type Letter = { id: number; date: string; text: string; wantReply?: boolean; replyAt?: number; reply?: string; replyNew?: boolean
+  sourceMemory?: { id: string; version: number }
+  serverId?: string; serverVersion?: number; timeZone?: string; replyState?: 'queued' | 'running' | 'succeeded' | 'failed' | 'blocked' | 'canceled'; replyFailure?: { code: string; retryable: boolean } }
 
 export type Person = {
   id: number
+  serverId?: string
+  serverVersion?: number
   localId?: string
   name: string            // 你对 TA 的称呼（显示名）
   realName?: string
   relation: string
   calledMe?: string       // TA 对你的称呼
   age: Age
+  photoTarget?: { kind: 'person_draft'; id: string }
+  photoMedia?: PostPhoto[]
   avatar: string
   photos?: string[]
   accent: 'sky' | 'sun'
   hasVoice: boolean
+  voiceId?:string|null
+  readyVoice?:ReadyPersonVoice|null
+  voiceTarget?:{kind:'person_draft';id:string}
+  conversationTone?:ConversationTone|null
+  voiceTimbre?:VoiceTimbre|null
   greeting: string
   personality: string[]
   catchphrase: string
   life: string[]
+  sourceStory?: string
   memories: Memory[]
   unknowns: string[]
   stories: Story[]
@@ -45,18 +61,23 @@ export type Person = {
   remind?: boolean
 }
 
+export type ConversationTone='gentle'|'witty'|'quiet'|'stern'
+export type VoiceTimbre='warm'|'bright'|'deep'
+export type ReadyPersonVoice={id:string;version:number;durationMs:number;mimeType:'audio/wav';byteSize:number;sha256:string}
+export type PersonVoiceContext={accountId:string;sessionId:string;draftId:string;onUnauthorized:()=>void}
+
 export function withPersonIdentity(person: Person): Person {
   return person.localId ? person : { ...person, localId: crypto.randomUUID() }
 }
 
 export type Msg = (
   | { id: number; kind: 'note'; text: string }
-  | { id: number; kind: 'him'; text: string; time: string; canRemember?: Memory; who?: number }
+  | { id: number; kind: 'him'; text: string; time: string; canRemember?: Memory; who?: number; speakerDisplayName?: string; speakerPersonId?: string }
   | { id: number; kind: 'me'; text: string; time: string; voice?: boolean }
-  | { id: number; kind: 'photo'; time: string; src?: string }
+  | { id: number; kind: 'photo'; time: string; src?: string; photo?: PostPhoto }
   | { id: number; kind: 'call'; time: string; mode: 'voice' | 'video'; secs: number }
   | { id: number; kind: 'gift'; owner: string; time: string; direction: 'sent' | 'received'; giftId: string; text: string }
-) & { at?: number }
+) & { at?: number; serverId?: string; serverVersion?: number; sequence?: string; generationJobId?: string; generationKind?: 'gather_reply' | 'photo_reply' | 'story_reply'; sourceDomain?: 'virtual_action' | 'virtual_context'; canSuggestMemory?: boolean }
 export type Chats = Record<string, Msg[]>
 
 export type User = { phone: string; dial: string; nick: string; localLoginId?: string }
@@ -70,14 +91,23 @@ export type Theme = 'auto' | 'day' | 'night'
 /* --------------------- 空间：朋友圈式的诸世界动态 --------------------- */
 /* 作者：联系人 id / 我 / 某个世界（世界时令） */
 export type Author = number | 'me' | `world:${WorldId}`
-export type PostComment = { id: number; author: Author; text: string; to?: Author; ai?: boolean; at: number }
+export type PostComment = { id: number; serverId?: string; serverVersion?: number; replyToServerId?: string; author: Author; authorName?: string; text: string; to?: Author; toName?: string; ai?: boolean; at: number }
+export type PostPhoto = { id: string; version: number; mimeType: string; byteSize: number; width: number; height: number }
 export type Post = {
   id: number
+  serverId?: string
+  serverVersion?: number
+  relatedPersonId?: number
+  personServerId?: string
+  authorName?: string
+  sourceMemoryId?: string
+  sourceMemoryVersion?: number
   author: Author
-  kind: 'echo' | 'status' | 'world' | 'mine'
+  kind: 'echo' | 'status' | 'world' | 'mine' | 'movement'
   text: string
   quote?: string           // 记忆回响时引用的、你亲手珍藏的记忆原文
   images: string[]
+  media?: PostPhoto[]
   world?: WorldId
   at: number
   likes: Author[]
@@ -230,22 +260,33 @@ export function seedPosts(posts: Post[], people: Person[], lang: Lang): Post[] {
 }
 
 /* 文件 → 压缩后的 dataURL（照片在本机保存为小图） */
-export function fileToDataUrl(file: File, max = 480): Promise<string> {
+export function fileToDataUrl(file: File, max = 480, signal?: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onerror = () => reject(reader.error)
+    const img = new Image()
+    let settled = false
+    const clear = () => { signal?.removeEventListener('abort', abort); reader.onload = null; reader.onerror = null; img.onload = null; img.onerror = null }
+    const fail = (error: unknown) => { if (!settled) { settled = true; clear(); reject(error) } }
+    const abort = () => { fail(new DOMException('Canceled', 'AbortError')); reader.abort(); img.src = '' }
+    if (signal?.aborted) { abort(); return }
+    signal?.addEventListener('abort', abort, { once: true })
+    reader.onerror = () => fail(reader.error)
     reader.onload = () => {
-      const img = new Image()
-      img.onerror = () => reject(new Error('image'))
+      img.onerror = () => fail(new Error('image'))
       img.onload = () => {
-        const s = Math.min(1, max / Math.max(img.width, img.height))
-        const c = document.createElement('canvas')
-        c.width = Math.round(img.width * s); c.height = Math.round(img.height * s)
-        c.getContext('2d')?.drawImage(img, 0, 0, c.width, c.height)
-        resolve(c.toDataURL('image/jpeg', 0.82))
+        try {
+          if (!img.width || !img.height) throw new Error('image')
+          const s = Math.min(1, max / Math.max(img.width, img.height))
+          const c = document.createElement('canvas')
+          c.width = Math.max(1, Math.round(img.width * s)); c.height = Math.max(1, Math.round(img.height * s))
+          const drawing = c.getContext('2d'); if (!drawing) throw new Error('canvas')
+          drawing.drawImage(img, 0, 0, c.width, c.height)
+          const source = c.toDataURL('image/jpeg', 0.82)
+          if (!settled) { settled = true; clear(); resolve(source) }
+        } catch (error) { fail(error) }
       }
       img.src = String(reader.result)
     }
-    reader.readAsDataURL(file)
+    try { reader.readAsDataURL(file) } catch (error) { fail(error) }
   })
 }

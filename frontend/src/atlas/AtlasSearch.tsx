@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { MagnifyingGlass } from '@phosphor-icons/react'
 import { Lens } from '../fx'
 import { isZh, useI18n, WORLD_IDS, type WorldId } from '../i18n'
@@ -8,6 +8,8 @@ import { WORLDS } from '../worlds'
 import { MemoryReader } from '../MemoryReader'
 import { ContextSheet } from '../mobile/ContextSheet'
 import { searchContacts, suggestClues } from './memorySearch'
+import type { ContactMatch } from './memorySearch'
+import type { MemorySearchHit, MemoryService } from '../serviceMemories'
 import { resultPage, searchWorlds } from './worldSearch'
 import './atlas-search.css'
 
@@ -21,9 +23,10 @@ type Props = {
   onOpen: (id: number) => void
   onSeek: (clue?: string) => void
   onWorld: (world: WorldId | 'unknown') => void
+  memoryService?: MemoryService
 }
 
-export function AtlasSearch({ people, query, currentWorld, onQuery, onClose, onOpen, onSeek, onWorld }: Props) {
+export function AtlasSearch({ people, query, currentWorld, onQuery, onClose, onOpen, onSeek, onWorld, memoryService }: Props) {
   const { t, lang } = useI18n()
   const zh = isZh(lang)
   const field = useRef<HTMLInputElement>(null)
@@ -36,6 +39,25 @@ export function AtlasSearch({ people, query, currentWorld, onQuery, onClose, onO
   const readingPerson = reading ? people.find(person => person.id === reading.personId) : undefined
   const readingMemory = readingPerson?.memories?.find(memory => memory.id === reading?.memoryId)
   const clue = query.trim()
+  const [remote, setRemote] = useState<{ key: string; service?: MemoryService; hits: MemorySearchHit[]; loading: boolean;failed?:boolean }>({ key: '', hits: [], loading: false })
+  const [retry,setRetry]=useState(0)
+  const searchKey = JSON.stringify([clue, lang])
+  const renderedSearch=useRef({key:searchKey,service:memoryService});renderedSearch.current={key:searchKey,service:memoryService}
+  useEffect(() => {
+    if (!memoryService || !clue) return
+    const controller = new AbortController()
+    setRemote({ key: searchKey, service: memoryService, hits: [], loading: true })
+    const timer = window.setTimeout(() => {
+      void memoryService.search(clue, lang, controller.signal).then(hits => {
+        if (!controller.signal.aborted&&renderedSearch.current.key===searchKey&&renderedSearch.current.service===memoryService) setRemote({ key: searchKey, service: memoryService, hits, loading: false })
+      }).catch(() => {
+        if (!controller.signal.aborted&&renderedSearch.current.key===searchKey&&renderedSearch.current.service===memoryService) {
+          setRemote({ key: searchKey, service: memoryService, hits: [], loading: false,failed:true })
+        }
+      })
+    }, 200)
+    return () => { clearTimeout(timer); controller.abort() }
+  }, [memoryService, clue, lang, searchKey, zh,retry])
   const pageKey = JSON.stringify([clue, connectedOnly, lang])
   const worlds = useMemo(() => WORLD_IDS.map(id => ({ id, name: t(`world.${id}`), law: t(`world.${id}.law`), code: WORLDS[id].code, thumb: WORLDS[id].thumb })), [t])
   const connectedCount = useMemo(() => {
@@ -44,10 +66,22 @@ export function AtlasSearch({ people, query, currentWorld, onQuery, onClose, onO
   }, [worlds, people])
   const worldMatches = useMemo(() => searchWorlds(worlds, people, clue, { connectedOnly, currentWorld }), [worlds, people, clue, connectedOnly, currentWorld])
   const suggestions = useMemo(() => suggestClues(people), [people])
-  const matches = useMemo(() => searchContacts(people, clue, world => t(`world.${world}`)), [people, clue, t])
+  const matches = useMemo<ContactMatch[]>(() => {
+    if (!memoryService) return searchContacts(people, clue, world => t(`world.${world}`))
+    if (!clue || remote.key !== searchKey || remote.service !== memoryService) return []
+    return remote.hits.flatMap(hit => {
+      if (hit.kind === 'world') return []
+      const person = people.find(person => person.serverId === hit.personId)
+      if (!person) return []
+      const memory = hit.kind === 'memory' ? person.memories.find(memory => memory.serverId === hit.memoryId) : undefined
+      if (hit.kind === 'memory' && !memory) return []
+      return [{ person, evidence: hit.excerpt ?? hit.title, ...(memory ? { memoryId: memory.id } : {}) }]
+    })
+  }, [people, clue, t, memoryService, remote, searchKey])
   const worldPage = resultPage(worldMatches, pages.key === pageKey ? pages.worlds : 0, 24)
   const contactPage = resultPage(matches, pages.key === pageKey ? pages.contacts : 0, 12)
-  const empty = !!clue && !worldMatches.length && !matches.length
+  const searchFailed=!!memoryService&&remote.key===searchKey&&remote.service===memoryService&&remote.failed
+  const empty = !!clue && !worldMatches.length && !matches.length && !searchFailed&&!(memoryService && (remote.key !== searchKey || remote.service !== memoryService || remote.loading))
   const title = zh ? '全部世界' : 'All worlds'
   const changePage = (group: 'worlds' | 'contacts', page: number) => {
     setPages(previous => ({ key: pageKey, worlds: previous.key === pageKey ? previous.worlds : 0,
@@ -88,7 +122,7 @@ export function AtlasSearch({ people, query, currentWorld, onQuery, onClose, onO
           <button aria-pressed={!connectedOnly} onClick={() => setConnectedOnly(false)}>{title}<span>{worlds.length}</span></button>
           <button aria-pressed={connectedOnly} onClick={() => setConnectedOnly(true)}>{zh ? '有联系人' : 'With contacts'}<span>{connectedCount}</span></button>
         </div>
-        {clue && <p className="atlas-directory-count" role="status">{zh ? `${worldMatches.length} 个世界 · ${matches.length} 位联系人` : `${worldMatches.length} worlds · ${matches.length} contacts`}</p>}
+        {clue && <p className="atlas-directory-count" role="status">{memoryService&&(remote.key!==searchKey||remote.service!==memoryService||remote.loading||searchFailed)?(zh?`${worldMatches.length} 个世界 · ${searchFailed?'联系人暂未确认':'正在搜索联系人…'}`:`${worldMatches.length} worlds · ${searchFailed?'Contacts not confirmed':'Searching contacts…'}`):(zh ? `${worldMatches.length} 个世界 · ${matches.length} 位联系人` : `${worldMatches.length} worlds · ${matches.length} contacts`)}</p>}
         <section className="atlas-directory-group" aria-labelledby="atlas-world-results">
           <h3 ref={worldHeading} tabIndex={-1} id="atlas-world-results">{zh ? '世界' : 'Worlds'}</h3>
           {worldPage.items.map(({ world, residentCount }) => <button className="atlas-world-row" key={world.id} onClick={() => selectWorld(world.id)} aria-current={world.id === currentWorld ? 'location' : undefined}>
@@ -111,7 +145,7 @@ export function AtlasSearch({ people, query, currentWorld, onQuery, onClose, onO
         </section>
         {clue && matches.length > 0 && <section className="atlas-directory-group" aria-labelledby="atlas-contact-results">
           <h3 ref={contactHeading} tabIndex={-1} id="atlas-contact-results">{zh ? '联系人和记忆' : 'People and memories'}</h3>
-          {contactPage.items.map(({ person, evidence, memoryId }) => <button className="atlas-clue-hit" key={person.id} aria-haspopup={memoryId === undefined ? undefined : 'dialog'} onClick={event => {
+          {contactPage.items.map(({ person, evidence, memoryId }) => <button className="atlas-clue-hit" key={person.id + ':' + (memoryId ?? 'person')} aria-haspopup={memoryId === undefined ? undefined : 'dialog'} onClick={event => {
             field.current?.blur()
             if (memoryId === undefined) { onOpen(person.id); return }
             event.currentTarget.focus({ preventScroll: true })
@@ -125,6 +159,7 @@ export function AtlasSearch({ people, query, currentWorld, onQuery, onClose, onO
           </button>)}
           {contactPage.pages > 1 && <PageControls group={zh ? '联系人' : 'Contacts'} result={contactPage} zh={zh} onPage={page => changePage('contacts', page)} />}
         </section>}
+        {searchFailed&&<div className="atlas-directory-empty" role="status"><p>{zh?'暂时无法搜索记忆，线索已保留。':'Memories could not be searched. Your clue is kept.'}</p><button className="atlas-directory-action" onClick={()=>setRetry(value=>value+1)}>{zh?'重试':'Retry'}</button></div>}
         {empty && <div className="atlas-directory-empty">
           <p>{zh ? '还没有找到这条线索。' : 'No matches for this clue yet.'}</p>
           <button className="atlas-directory-action" onClick={showAll}>{zh ? '清除搜索，看看全部世界' : 'Clear search and show all worlds'}</button>
@@ -142,7 +177,7 @@ export function AtlasSearch({ people, query, currentWorld, onQuery, onClose, onO
 
   return <>
     <div hidden={!!readingMemory}>{directory}</div>
-    {readingPerson && readingMemory && <MemoryReader memory={readingMemory} personName={readingPerson.name} onClose={closeMemory} />}
+    {readingPerson && readingMemory && <MemoryReader memory={readingMemory} personName={readingPerson.name} personId={readingPerson.serverId} service={memoryService} onClose={closeMemory} />}
   </>
 }
 

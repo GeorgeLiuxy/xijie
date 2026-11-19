@@ -24,6 +24,9 @@ export async function claimGoalReward(owner: string, token: string) {
 }
 
 export type InviteStatus = {
+  shareUrl?: string
+  rewardedCount?: number
+  linkVersion?: number
   inviteId: string | null
   publicName: string
   rewards: string[]

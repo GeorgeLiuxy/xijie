@@ -1,6 +1,7 @@
 # Keep Unix tool entry points compatible across checkouts.
 /.figma/make/* text eol=lf
 /mobile/android/gradlew text eol=lf
+/backend/services/**/db/*.sql text eol=lf
 
 # Source media and Gradle Wrapper are checked in as binaries.
 *.jpg binary

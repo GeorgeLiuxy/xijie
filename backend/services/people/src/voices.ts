@@ -1,0 +1,26 @@
+import type {PoolClient} from 'pg'
+import type {PeopleConfig} from './config.js'
+import {PeopleError,invalid,uuid,type ReadyVoice,type VoiceBinding,type VoiceRef} from './contracts.js'
+export const voiceColumns=(table:string,draftId:string)=>`(SELECT jsonb_build_object('id',v.voice_id,'version',v.media_version,'durationMs',v.duration_ms,'mimeType',v.mime_type,'byteSize',v.byte_size,'sha256',v.sha256) FROM person_draft_voice v WHERE v.account_id=${table}.account_id AND v.draft_id=${table}.${draftId}) AS voice`
+export function voiceRefs(body:unknown):VoiceRef[]{if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length!==1)throw invalid();const refs=(body as {refs?:any}).refs;if(!Array.isArray(refs)||refs.length>100||refs.some(r=>!r||typeof r!=='object'||Array.isArray(r)||Object.keys(r).some(k=>!['draftId','voiceId','version','bindingVersion'].includes(k))||typeof r.draftId!=='string'||!uuid.test(r.draftId)||typeof r.voiceId!=='string'||!uuid.test(r.voiceId)||!Number.isSafeInteger(r.version)||r.version<1||r.version>2147483647||r.bindingVersion!==undefined&&(!Number.isSafeInteger(r.bindingVersion)||r.bindingVersion<1||r.bindingVersion>2147483647))||new Set(refs.map(r=>r.draftId+':'+r.voiceId)).size!==refs.length)throw invalid();return refs.map(r=>({draftId:r.draftId.toLowerCase(),voiceId:r.voiceId.toLowerCase(),version:r.version,...(r.bindingVersion===undefined?{}:{bindingVersion:r.bindingVersion})}))}
+export function readyVoice(v:unknown):v is ReadyVoice{const p=v as ReadyVoice;return !!p&&typeof p.id==='string'&&uuid.test(p.id)&&Number.isSafeInteger(p.version)&&p.version>0&&p.version<=2147483647&&Number.isSafeInteger(p.durationMs)&&p.durationMs>=1&&p.durationMs<=30000&&p.mimeType==='audio/wav'&&Number.isSafeInteger(p.byteSize)&&p.byteSize>=46&&p.byteSize<=1440044&&(p.byteSize-44)%2===0&&typeof p.sha256==='string'&&/^[a-f0-9]{64}$/.test(p.sha256)}
+export async function bindVoice(config:PeopleConfig,accountId:string,draftId:string,voiceId:string):Promise<VoiceBinding>{
+ const unavailable=()=>new PeopleError(503,'VOICE_UNAVAILABLE','The selected voice sample could not be verified. Retry the same selection.')
+ if(!config.mediaOrigin)throw unavailable();let response:Response
+ try{response=await fetch(new URL('/internal/v1/people/drafts/'+draftId+'/voice-bindings',config.mediaOrigin),{method:'POST',redirect:'error',signal:AbortSignal.timeout(5000),headers:{Authorization:'Bearer '+config.serviceToken,'Content-Type':'application/json','X-Xijie-Account-Id':accountId},body:JSON.stringify({voiceId})})}catch{throw unavailable()}
+ if(!response.ok){if(response.status===403)throw new PeopleError(403,'VOICE_PERMISSION_REQUIRED','Permission to save a voice sample is required.');if([404,409,422].includes(response.status))throw new PeopleError(response.status,'VOICE_SELECTION_INVALID','The selected voice sample is unavailable or still processing.');throw unavailable()}
+ const v=(await response.json().catch(()=>null))?.data
+ if(!v||v.draftId!==draftId||!readyVoice(v.voice)||v.voice.id!==voiceId||!Number.isSafeInteger(v.bindingVersion)||v.bindingVersion<0||v.bindingVersion>2147483647||typeof v.expiresAt!=='string'||!Number.isFinite(Date.parse(v.expiresAt))||Date.parse(v.expiresAt)<=Date.now()||Date.parse(v.expiresAt)>Date.now()+60000)throw unavailable()
+ return {voice:v.voice,expiresAt:v.expiresAt,bindingVersion:v.bindingVersion}
+}
+export async function replaceVoice(db:PoolClient,accountId:string,draftId:string,id:string|null,binding?:VoiceBinding){
+ if(id!==null&&(!binding||binding.voice.id!==id||!readyVoice(binding.voice)))throw new PeopleError(503,'VOICE_UNAVAILABLE','The selected voice sample could not be verified.')
+ if(id!==null&&!(await db.query<{valid:boolean}>('SELECT clock_timestamp()<$1::timestamptz AS valid',[binding!.expiresAt])).rows[0].valid)throw new PeopleError(409,'VOICE_BINDING_EXPIRED','The voice sample needs to be verified again.')
+ const currentEpoch=(await db.query<{version:number}>('SELECT version FROM person_draft_voice_epochs WHERE account_id=$1 AND draft_id=$2',[accountId,draftId])).rows[0]?.version??0
+ if(id!==null&&binding!.bindingVersion!==currentEpoch)throw new PeopleError(409,'VOICE_BINDING_EXPIRED','The voice binding source changed. Verify this selection again.')
+ const previous=(await db.query<{voice_id:string;media_version:number}>('SELECT voice_id,media_version FROM person_draft_voice WHERE account_id=$1 AND draft_id=$2 FOR UPDATE',[accountId,draftId])).rows[0]
+ if(id===null&&!previous||id!==null&&previous?.voice_id===id&&previous.media_version===binding!.voice.version)return
+ const epoch=(await db.query<{version:number}>('INSERT INTO person_draft_voice_epochs(account_id,draft_id,version) VALUES($1,$2,1) ON CONFLICT(account_id,draft_id) DO UPDATE SET version=person_draft_voice_epochs.version+1 RETURNING version',[accountId,draftId])).rows[0].version
+ await db.query('DELETE FROM person_draft_voice WHERE account_id=$1 AND draft_id=$2',[accountId,draftId])
+ if(id!==null){const p=binding!.voice;await db.query('INSERT INTO person_draft_voice(account_id,draft_id,voice_id,media_version,binding_version,duration_ms,mime_type,byte_size,sha256) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',[accountId,draftId,p.id,p.version,epoch,p.durationMs,p.mimeType,p.byteSize,p.sha256])}
+}

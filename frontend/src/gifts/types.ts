@@ -31,6 +31,9 @@ export type GiftOpenOptions = {
 }
 export type GiftLine = { giftId: string; quantity: number; snapshot: GiftDefinition }
 export type GiftReceipt = {
+  status?: 'in_transit' | 'arrived' | 'delivery_failed'
+  serverVersion?: number
+  debitTransactionId?: string | null
   id: string
   target: GiftTarget
   lines: GiftLine[]
@@ -43,6 +46,8 @@ export type GiftReceipt = {
   personaReply?: boolean
 }
 export type ReceivedGift = {
+  serverVersion?: number
+  displayable?: boolean
   id: string
   from: GiftTarget
   lines: GiftLine[]
@@ -84,8 +89,9 @@ export type GiftSendInput = {
   source: 'trial' | 'inventory' | 'reward'
 }
 export type GoalKind = 'flight' | 'home' | 'album'
-export type GoalContribution = { seat: number; text: string; value: number; part?: string }
+export type GoalContribution = { seat: number; text: string; value: number; part?: string;contributionId?:string;version?:number;status?:'pending'|'approved'|'rejected'|'withdrawn';adoption?:{status:'pending'|'fulfilled'|'revoked';memoryId?:string}|null }
 export type GiftGoal = {
+  album?:{url:string|null;version?:number;personId?:string;createdAt?:string;status:string;ownContribution?:import('../serviceAlbums').AlbumContribution|null;viewerScope?:import('../serviceAlbums').AlbumViewerScope}
   id: string
   kind: GoalKind
   name: string

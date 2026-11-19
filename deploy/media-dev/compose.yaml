@@ -1,0 +1,34 @@
+services:
+  media-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: xijie_media
+      POSTGRES_USER: xijie_media
+      POSTGRES_PASSWORD: ${XIJIE_MEDIA_DB_PASSWORD:?Private database password required}
+    ports:
+      - "127.0.0.1:5438:5432"
+    volumes:
+      - media-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U xijie_media -d xijie_media"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  object-store:
+    image: ghcr.io/chrislusf/seaweedfs:4.53
+    command: ["mini", "-dir=/data", "-ip.bind=0.0.0.0", "-s3.port=8333", "-s3.port.iceberg=0", "-s3.port.lance=0"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${MEDIA_S3_ACCESS_KEY:?Private access key required}
+      AWS_SECRET_ACCESS_KEY: ${MEDIA_S3_SECRET_KEY:?Private secret key required}
+      S3_BUCKET: ${MEDIA_S3_BUCKET:?Private bucket required}
+    ports:
+      - "127.0.0.1:8333:8333"
+    volumes:
+      - media-objects:/data
+volumes:
+  media-db:
+  media-objects:
+networks:
+  default:
+    external: true
+    name: xijie-identity-dev_default

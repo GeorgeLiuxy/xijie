@@ -1,0 +1,17 @@
+.gift-wish-glow {
+  position:absolute; inset:0; z-index:112; overflow:hidden; pointer-events:none;
+}
+.gift-wish-glow i {
+  position:absolute; left:50%; top:52%; border-radius:50%; opacity:0;
+  width:var(--spark-size); height:var(--spark-size);
+  background:#ffeac0; box-shadow:0 0 8px 2px #c48b3f7a;
+  animation:gift-wish-ember 950ms cubic-bezier(.14,.65,.24,1) var(--spark-delay) both;
+}
+.gift-wish-glow i:nth-child(3n) { background:#e3b970; }
+@keyframes gift-wish-ember {
+  0% { opacity:0; transform:translate(-50%,-50%) scale(.2); }
+  18% { opacity:.82; }
+  58% { opacity:.64; }
+  100% { opacity:0; transform:translate(var(--spark-x),var(--spark-y)) scale(.45); }
+}
+@media (prefers-reduced-motion:reduce) { .gift-wish-glow { display:none; } }

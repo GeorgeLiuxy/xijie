@@ -1,26 +1,74 @@
 apply plugin: 'com.android.application'
+def releaseRequested = providers.gradleProperty('xijieRelease').orElse('false').get() == 'true'
+def releaseCode = providers.gradleProperty('xijieVersionCode').orElse('0').get()
+def releaseName = providers.gradleProperty('xijieVersionName').orElse('').get()
+def releaseAssets = providers.gradleProperty('xijieReleaseAssetsDir').orElse('').get()
+def debugAssets = providers.gradleProperty('xijieDebugAssetsDir').orElse('').get()
+// Public WeChat mobile AppID only. The connector secret belongs to Logto, never the APK.
+def wechatAppId = providers.gradleProperty('xijieWechatAppId').orElse('').get()
+if (!wechatAppId.isEmpty() && !(wechatAppId ==~ /wx[0-9a-fA-F]{16}/)) throw new GradleException('xijieWechatAppId must be the approved WeChat mobile AppID or empty.')
+if (!debugAssets.isBlank()) {
+    if (!file(debugAssets + '/capacitor.config.json').isFile()) throw new GradleException('Debug assets require capacitor.config.json.')
+    def cap = new groovy.json.JsonSlurper().parse(file(debugAssets + '/capacitor.config.json'))
+    def origin = new URI(cap.server.url)
+    if (!(cap.server.url ==~ /http:\/\/127\.0\.0\.1:[1-9][0-9]{0,4}/) || origin.port > 65535 || cap.android.webContentsDebuggingEnabled != true || cap.android.allowMixedContent != false) throw new GradleException('Debug assets require an explicit HTTP 127.0.0.1 port with WebView debugging enabled and mixed content disabled.')
+}
+def signingValues = ['XIJIE_ANDROID_KEYSTORE','XIJIE_ANDROID_KEY_ALIAS','XIJIE_ANDROID_STORE_PASSWORD','XIJIE_ANDROID_KEY_PASSWORD'].collect { System.getenv(it) }
+if (releaseRequested) {
+    if (!(releaseCode ==~ /[1-9][0-9]{0,8}/) || releaseName.isBlank() || releaseName.length() > 80) throw new GradleException('Explicit release versionCode and versionName are required.')
+    if (releaseAssets.isBlank() || !file(releaseAssets + '/capacitor.config.json').isFile()) throw new GradleException('Run mobile/build-release.ps1 to stage the actual service frontend.')
+    def cap = new groovy.json.JsonSlurper().parse(file(releaseAssets + '/capacitor.config.json'))
+    def origin = new URI(cap.server.url)
+    if (origin.scheme != 'https' || origin.host == null || origin.userInfo != null || origin.query != null || origin.fragment != null || !(origin.path in ['', '/']) || cap.android.webContentsDebuggingEnabled != false || cap.android.allowMixedContent != false) throw new GradleException('Release requires an HTTPS first-party origin and disabled WebView debugging/mixed content.')
+    if (signingValues.any { it } && !signingValues.every { it }) throw new GradleException('All four release signing environment settings are required together.')
+}
 android {
     namespace = 'app.elysium.figma.dev'
     compileSdk = rootProject.ext.compileSdkVersion
+    buildFeatures { buildConfig true }
     defaultConfig {
-        applicationId 'app.elysium.figma.dev'
+        buildConfigField 'String', 'WECHAT_APP_ID', '"' + wechatAppId + '"'
+        manifestPlaceholders = [xijieAppLinkHost: releaseRequested ? new groovy.json.JsonSlurper().parse(file(releaseAssets + '/capacitor.config.json')).server.url.toURI().host : 'disabled.invalid']
+        applicationId releaseRequested ? 'app.elysium.xijie' : 'app.elysium.figma.dev'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName '0.1-usb-debug'
+        versionCode releaseRequested ? releaseCode.toInteger() : 1
+        versionName releaseRequested ? releaseName : '0.1-usb-debug'
         aaptOptions { ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~' }
     }
-    buildTypes { debug { debuggable true } }
+    signingConfigs {
+        if (releaseRequested && signingValues.every { it }) {
+            release {
+                storeFile file(signingValues[0])
+                keyAlias signingValues[1]
+                storePassword signingValues[2]
+                keyPassword signingValues[3]
+            }
+        }
+    }
+    buildTypes {
+        debug { debuggable true }
+        release {
+            debuggable false
+            minifyEnabled false
+            resValue 'string', 'app_name', '西界'
+            resValue 'string', 'title_activity_main', '西界'
+            if (releaseRequested && signingValues.every { it }) signingConfig signingConfigs.release
+        }
+    }
+    if (releaseRequested) sourceSets.release.assets.srcDirs = [releaseAssets]
+    if (!debugAssets.isBlank()) sourceSets.debug.assets.srcDirs = [debugAssets]
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_21
         targetCompatibility JavaVersion.VERSION_21
     }
 }
-// This host is a USB development application, not a release product.
+// Release remains closed unless the dedicated staging script supplies explicit inputs.
 androidComponents {
-    beforeVariants(selector().withBuildType('release')) { variant -> variant.enable = false }
+    beforeVariants(selector().withBuildType('release')) { variant -> variant.enable = releaseRequested }
 }
 dependencies {
+    implementation 'com.tencent.mm.opensdk:wechat-sdk-android:6.8.40'
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"

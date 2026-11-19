@@ -151,7 +151,7 @@ export function PersonalGiftScene({ owner, person, focusReceiptId, onOpen }: {
   const selected = placed.find(item => item.receipt.id === selectedId)
   const focused = receipts.find(receipt => receipt.id === selectedId)
   const previousWorld = focused && focused.target.world !== person.world
-  const pending = focused && !hasArrived(focused, now) ? focused : undefined
+  const pending = focused && focused.status !== 'delivery_failed' && !hasArrived(focused, now) ? focused : undefined
   const recordOnly = focused && hasArrived(focused, now) && (previousWorld || !focused.lines.some(line => decoration(line.snapshot)))
   const panelId = useId()
   useEffect(() => setChoice(undefined), [owner, person.id, person.localId, focusReceiptId])

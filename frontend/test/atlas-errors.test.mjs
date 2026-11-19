@@ -1,0 +1,21 @@
+import {test} from 'node:test'
+import assert from 'node:assert/strict'
+import {readFile} from 'node:fs/promises'
+import vm from 'node:vm'
+import ts from '../../node_modules/typescript/lib/typescript.js'
+const source=await readFile(new URL('../src/atlas/AtlasSearch.tsx',import.meta.url),'utf8'),ast=ts.createSourceFile('AtlasSearch.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX),node=ast.statements.find(n=>ts.isFunctionDeclaration(n)&&n.name?.text==='AtlasSearch'),code=ts.transpileModule(node.getText(ast).replace(/^export /,''),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.React}}).outputText
+const element=(type,props,...children)=>({type,props:{...props,children:children.flat()}}),all=node=>node&&typeof node==='object'?[node,...(node.props?.children??[]).flatMap(all)]:[],text=node=>typeof node==='string'?node:node&&typeof node==='object'?(node.props?.children??[]).map(text).join(''):''
+const defer=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});return {promise,resolve,reject}},settle=async()=>{for(let i=0;i<4;i++)await new Promise(r=>setImmediate(r))}
+function harness(){let si=0,ri=0,ei=0,id=0;const states=[],refs=[],effects=[],pending=[],timers=new Map()
+ const ctx=vm.createContext({React:{createElement:element},useState(v){const i=si++;if(!(i in states))states[i]=typeof v==='function'?v():v;return [states[i],v=>states[i]=typeof v==='function'?v(states[i]):v]},useRef(v){const i=ri++;return refs[i]??(refs[i]={current:v})},useMemo:fn=>fn(),useEffect(fn,deps){const i=ei++,old=effects[i];if(!old||deps.some((d,j)=>d!==old.deps[j]))pending.push(()=>{old?.cleanup?.();effects[i]={deps,cleanup:fn()}})},useI18n:()=>({lang:'zh-CN',t:k=>k}),isZh:()=>true,WORLD_IDS:['courtyard'],WORLDS:{courtyard:{code:'world',thumb:'image'}},searchWorlds:()=>[],searchContacts:()=>[],suggestClues:()=>[],resultPage:(items,page,size)=>({items:items.slice(page*size,(page+1)*size),page,pages:Math.ceil(items.length/size)}),AbortController,requestAnimationFrame:()=>0,cancelAnimationFrame(){},window:{setTimeout(fn){timers.set(++id,fn);return id}},clearTimeout:key=>timers.delete(key),ContextSheet:'Sheet',MemoryReader:'Reader',MagnifyingGlass:'Search',Lens:'Lens',I:{X:'X',Beacon:'Beacon',Chevron:'Chevron'},console})
+ const component=vm.runInContext(code+'\nAtlasSearch',ctx)
+ return {render(props,flush=true){si=ri=ei=0;const result=component(props);if(flush)this.flush();return result},flush(){while(pending.length)pending.shift()()},timers(){for(const [id,fn]of timers){timers.delete(id);fn()}},close(){effects.forEach(e=>e.cleanup?.())}}
+}
+const props=service=>({people:[],query:'保留的线索',currentWorld:'courtyard',memoryService:service,onQuery(){},onClose(){},onOpen(){},onSeek(){},onWorld(){}})
+test('atlas failed search retains its clue, offers in-place retry and never labels failure as no matches',async()=>{
+ const one=defer(),two=defer();let calls=0,reports=0;const service={search:()=>++calls===1?one.promise:two.promise,report:()=>reports++},p=props(service),h=harness();h.render(p);h.timers();one.reject(Error('temporary'));await settle();let tree=h.render(p)
+ assert.match(text(tree),/暂时无法搜索记忆/);assert(!text(tree).includes('还没有找到这条线索'));assert(!text(tree).includes('0 位联系人'));assert.equal(all(tree).find(n=>n.type==='input').props.value,'保留的线索');all(tree).find(n=>n.type==='button'&&text(n)==='重试').props.onClick();h.render(p);h.timers();two.resolve([]);await settle();tree=h.render(p);assert.equal(calls,2);assert.equal(reports,0);assert.match(text(tree),/还没有找到这条线索/);assert(!text(tree).includes('暂时无法搜索记忆'));h.close()
+})
+test('old query and session failures cannot publish or report after a newer render even before effect cleanup',async()=>{
+ for(const change of ['query','session']){const late=defer();let reports=0;const first={search:()=>late.promise,report:()=>reports++},second={search:async()=>[],report:()=>reports++},p=props(first),h=harness();h.render(p);h.timers();const next=change==='query'?{...p,query:'新线索'}:{...p,memoryService:second};h.render(next,false);late.reject(Error('old failure'));await settle();assert.equal(reports,0);let tree=h.render(next,false);assert(!text(tree).includes('暂时无法搜索记忆'));h.flush();h.close()}
+})
